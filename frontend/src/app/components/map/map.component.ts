@@ -1003,10 +1003,33 @@ export class MapComponent implements OnInit, OnDestroy {
         if (match) selectedId = match.id;
       }
 
+      // Establecer de inmediato el sismo seleccionado de forma síncrona para activación instantánea del ShakeMap
+      const baseDetail = {
+        id: selectedId || String(feature.id),
+        title: props['title'] || props['place'] || 'Sismo en Centroamérica',
+        place: props['place'] || props['title'],
+        time: props['time'] || new Date().toISOString(),
+        updatedAt: props['updatedAt'],
+        magnitude: mag,
+        magnitudeType: props['magnitudeType'] || 'Mw',
+        depth: depth,
+        status: props['status'] || 'REVIEWED',
+        alertLevel: props['alertLevel'],
+        significance: Number(props['significance']) || 0,
+        tsunamiAlert: props['tsunamiAlert'] === true || props['tsunamiAlert'] === 'true',
+        latitude: coords[1],
+        longitude: coords[0],
+        totalCitizenReports: 0
+      };
+      this.earthquakeService.selectedEarthquake.set(baseDetail as any);
+
       if (selectedId) {
         this.earthquakeService.selectEarthquake(selectedId);
       }
       this.seismographHud?.triggerSeismicSpike(mag);
+      if (this.map) {
+        this.map.flyTo({ center: coords, zoom: Math.max(this.map.getZoom(), 7.0), speed: 1.1 });
+      }
 
       const dateObj = new Date(props['time']);
       const caDate = dateObj.toLocaleDateString('es', {

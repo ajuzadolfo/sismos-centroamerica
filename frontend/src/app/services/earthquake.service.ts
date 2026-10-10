@@ -73,6 +73,13 @@ export class EarthquakeService {
         next: (data) => {
           this.earthquakes.set(data.features || []);
           this.loading.set(false);
+          // Auto-seleccionar el sismo principal para activar de inmediato el ShakeMap y el panel de detalle
+          if (!this.selectedEarthquake() && data.features && data.features.length > 0) {
+            const major = data.features.reduce((max, cur) => cur.properties.magnitude > max.properties.magnitude ? cur : max);
+            if (major) {
+              this.selectEarthquake(major.id);
+            }
+          }
         },
         error: () => this.loading.set(false)
       })
