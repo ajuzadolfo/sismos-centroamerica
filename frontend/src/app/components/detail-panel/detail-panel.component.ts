@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { EarthquakeService } from '../../services/earthquake.service';
+import { TranslationService } from '../../services/translation.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -22,33 +23,36 @@ import { environment } from '../../../environments/environment';
 
         <div class="card-body">
           <h2 class="epicenter-title">{{ event.place || event.title }}</h2>
-          <div class="timestamp-row">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
-            </svg>
-            <span>{{ event.time | date:'medium' }}</span>
+          <div class="timestamps-group">
+            <div class="time-item">
+              <span class="time-tag">CENTROAMÉRICA (UTC-6)</span>
+              <span class="time-val">{{ event.time | date:'d MMM y, HH:mm:ss':'-0600' }}</span>
+            </div>
+            <div class="time-item utc">
+              <span class="time-tag">UNIVERSAL (UTC)</span>
+              <span class="time-val">{{ event.time | date:'d MMM y, HH:mm:ss':'UTC' }}</span>
+            </div>
           </div>
 
           <div class="params-grid">
             <div class="param-box">
-              <span class="param-label">Profundidad</span>
+              <span class="param-label">{{ transService.tr().detail.depth }}</span>
               <span class="param-val">{{ event.depth | number:'1.1-1' }} km</span>
             </div>
             <div class="param-box">
-              <span class="param-label">Estado</span>
+              <span class="param-label">{{ transService.tr().detail.status }}</span>
               <span class="param-val status-val" [class.reviewed]="event.status === 'REVIEWED'">
                 {{ event.status }}
               </span>
             </div>
             <div class="param-box">
-              <span class="param-label">Coordenadas</span>
+              <span class="param-label">{{ transService.tr().detail.coords }}</span>
               <span class="param-val coords-val">{{ event.latitude | number:'1.2-2' }}°, {{ event.longitude | number:'1.2-2' }}°</span>
             </div>
             <div class="param-box">
-              <span class="param-label">Tsunami</span>
+              <span class="param-label">{{ transService.tr().detail.tsunami }}</span>
               <span class="param-val" [class.tsunami-alert]="event.tsunamiAlert">
-                {{ event.tsunamiAlert ? 'ALERTA' : 'Sin alerta' }}
+                {{ event.tsunamiAlert ? transService.tr().detail.tsunamiAlert : transService.tr().detail.tsunamiNone }}
               </span>
             </div>
           </div>
@@ -57,52 +61,52 @@ import { environment } from '../../../environments/environment';
           <div class="citizen-section">
             <div class="citizen-header">
               <div class="citizen-title">
-                <span>¿LO SENTISTE?</span>
-                <span class="report-counter">{{ event.totalCitizenReports }} reportes</span>
+                <span>{{ transService.tr().detail.citizenTitle }}</span>
+                <span class="report-counter">{{ event.totalCitizenReports }} {{ transService.currentLang() === 'en' ? 'reports' : 'reportes' }}</span>
               </div>
               @if (event.averagePerceivedIntensity) {
                 <div class="avg-intensity">
-                  Promedio percibido: <strong>{{ event.averagePerceivedIntensity | number:'1.1-1' }} / 5</strong>
+                  {{ transService.tr().detail.avgIntensity }} <strong>{{ event.averagePerceivedIntensity | number:'1.1-1' }} / 5</strong>
                 </div>
               }
             </div>
 
             @if (reportStatus() === 'success') {
               <div class="reported-success">
-                <span>✓ {{ reportMessage() || '¡Gracias! Tu reporte de percepción ha sido verificado y registrado.' }}</span>
+                <span>✓ {{ reportMessage() || (transService.currentLang() === 'en' ? 'Thank you! Your report has been verified.' : '¡Gracias! Tu reporte de percepción ha sido verificado.') }}</span>
               </div>
             } @else if (reportStatus() === 'error') {
               <div class="reported-error">
                 <span>⚠ {{ reportMessage() }}</span>
-                <button class="retry-btn" (click)="resetReport()">Intentar de nuevo</button>
+                <button class="retry-btn" (click)="resetReport()">{{ transService.tr().detail.retry }}</button>
               </div>
             } @else if (reportStatus() === 'submitting') {
               <div class="reporting-loader">
                 <span class="spinner-small"></span>
-                <span>Validando geodésicamente con PostGIS...</span>
+                <span>{{ transService.tr().detail.sendingReport }}</span>
               </div>
             } @else {
-              <p class="citizen-desc">Toca un nivel según tu percepción en el lugar:</p>
+              <p class="citizen-desc">{{ transService.tr().detail.citizenDesc }}</p>
               <div class="emoji-buttons">
-                <button (click)="submitReport(event, 1, '😴')" title="Nivel 1: Imperceptible / Leve">
+                <button (click)="submitReport(event, 1, '😴')" title="1">
                   <span class="emoji">😴</span>
-                  <span class="lbl">Leve</span>
+                  <span class="lbl">{{ transService.tr().detail.weak }}</span>
                 </button>
-                <button (click)="submitReport(event, 2, '😐')" title="Nivel 2: Moderado">
+                <button (click)="submitReport(event, 2, '😐')" title="2">
                   <span class="emoji">😐</span>
-                  <span class="lbl">Moderado</span>
+                  <span class="lbl">{{ transService.tr().detail.moderate }}</span>
                 </button>
-                <button (click)="submitReport(event, 3, '😨')" title="Nivel 3: Fuerte">
+                <button (click)="submitReport(event, 3, '😨')" title="3">
                   <span class="emoji">😨</span>
-                  <span class="lbl">Fuerte</span>
+                  <span class="lbl">{{ transService.tr().detail.strong }}</span>
                 </button>
-                <button (click)="submitReport(event, 4, '😱')" title="Nivel 4: Muy Fuerte">
+                <button (click)="submitReport(event, 4, '😱')" title="4">
                   <span class="emoji">😱</span>
-                  <span class="lbl">Muy Fuerte</span>
+                  <span class="lbl">{{ transService.currentLang() === 'en' ? 'Very Strong' : 'Muy Fuerte' }}</span>
                 </button>
-                <button (click)="submitReport(event, 5, '🏚️')" title="Nivel 5: Pánico / Daños">
+                <button (click)="submitReport(event, 5, '🏚️')" title="5">
                   <span class="emoji">🏚️</span>
-                  <span class="lbl">Extremo</span>
+                  <span class="lbl">{{ transService.currentLang() === 'en' ? 'Extreme' : 'Extremo' }}</span>
                 </button>
               </div>
             }
@@ -178,13 +182,40 @@ import { environment } from '../../../environments/environment';
       margin-bottom: 8px;
     }
 
-    .timestamp-row {
+    .timestamps-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 16px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+
+    .time-item {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 16px;
+      justify-content: space-between;
+      font-size: 0.75rem;
+    }
+
+    .time-item .time-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 0.06em;
+    }
+
+    .time-item.utc .time-tag {
+      color: var(--accent-cyan);
+    }
+
+    .time-item .time-val {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: #e2e8f0;
+      font-size: 0.75rem;
     }
 
     .params-grid {
@@ -348,10 +379,43 @@ import { environment } from '../../../environments/environment';
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
+
+    @media (max-width: 768px) {
+      .detail-card {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: 80vh;
+        border-radius: 20px 20px 0 0;
+        padding: 18px 16px;
+        z-index: 150;
+        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.85);
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+      }
+
+      .params-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .emoji-buttons {
+        gap: 6px;
+      }
+
+      .emoji-buttons button {
+        padding: 8px 4px;
+      }
+    }
   `]
 })
 export class DetailPanelComponent {
   earthquakeService = inject(EarthquakeService);
+  transService = inject(TranslationService);
   private http = inject(HttpClient);
 
   reportStatus = signal<'idle' | 'submitting' | 'success' | 'error'>('idle');

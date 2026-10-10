@@ -2,6 +2,7 @@ import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EarthquakeService } from '../../services/earthquake.service';
+import { TranslationService } from '../../services/translation.service';
 
 @Component({
   selector: 'app-timeline',
@@ -14,7 +15,7 @@ import { EarthquakeService } from '../../services/earthquake.service';
         <button
           class="play-btn"
           (click)="togglePlayback()"
-          [title]="isPlaying() ? 'Pausar animación' : 'Reproducir cronología sísmica'">
+          [title]="isPlaying() ? transService.tr().timeline.pause : transService.tr().timeline.play">
           @if (isPlaying()) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <rect x="6" y="4" width="4" height="16"/>
@@ -41,7 +42,7 @@ import { EarthquakeService } from '../../services/earthquake.service';
           <span class="current-date-badge">
             {{ currentDateLabel() }}
           </span>
-          <span class="date-label">Ahora</span>
+          <span class="date-label">{{ transService.tr().timeline.now }}</span>
         </div>
 
         <input
@@ -55,15 +56,15 @@ import { EarthquakeService } from '../../services/earthquake.service';
       </div>
 
       <!-- Botón de Reinicio -->
-      <button class="reset-btn btn-secondary" (click)="resetTimeline()" title="Ver todos los sismos">
-        Restablecer
+      <button class="reset-btn btn-secondary" (click)="resetTimeline()" [title]="transService.tr().timeline.reset">
+        {{ transService.tr().timeline.reset }}
       </button>
     </div>
   `,
   styles: [`
     .timeline-bar {
       position: absolute;
-      bottom: 24px;
+      bottom: 28px;
       left: 16px;
       right: 16px;
       height: 72px;
@@ -175,10 +176,47 @@ import { EarthquakeService } from '../../services/earthquake.service';
       white-space: nowrap;
       font-size: 0.75rem;
     }
+
+    @media (max-width: 768px) {
+      .timeline-bar {
+        bottom: 28px;
+        left: 8px;
+        right: 8px;
+        height: 58px;
+        padding: 0 10px;
+        gap: 8px;
+      }
+
+      .play-btn {
+        width: 36px;
+        height: 36px;
+      }
+
+      .current-date-badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+      }
+
+      .reset-btn {
+        font-size: 0.68rem;
+        padding: 4px 8px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .speed-selector {
+        display: none;
+      }
+
+      .date-label {
+        display: none;
+      }
+    }
   `]
 })
 export class TimelineComponent implements OnDestroy {
   earthquakeService = inject(EarthquakeService);
+  transService = inject(TranslationService);
 
   readonly isPlaying = signal<boolean>(false);
   readonly speed = signal<number>(1);
@@ -200,14 +238,17 @@ export class TimelineComponent implements OnDestroy {
   });
 
   readonly minDateLabel = computed(() => {
-    return new Date(this.minTime()).toLocaleDateString('es', { day: 'numeric', month: 'short' });
+    const locale = this.transService.currentLang() === 'en' ? 'en' : 'es';
+    return new Date(this.minTime()).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
   });
 
   readonly currentDateLabel = computed(() => {
-    return new Date(this.currentTime()).toLocaleString('es', {
+    const locale = this.transService.currentLang() === 'en' ? 'en-US' : 'es-GT';
+    return new Date(this.currentTime()).toLocaleString(locale, {
+      timeZone: 'America/Guatemala',
       dateStyle: 'medium',
       timeStyle: 'short'
-    });
+    }) + ' (UTC-6)';
   });
 
   ngOnDestroy() {

@@ -2,6 +2,7 @@ import { Component, EventEmitter, Output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EarthquakeService } from '../../services/earthquake.service';
+import { TranslationService } from '../../services/translation.service';
 import { EarthquakeFilter } from '../../models/earthquake.model';
 
 @Component({
@@ -12,7 +13,7 @@ import { EarthquakeFilter } from '../../models/earthquake.model';
     <div class="drawer-overlay" (click)="close.emit()">
       <div class="drawer-panel glass-panel" (click)="$event.stopPropagation()">
         <div class="drawer-header">
-          <h2>FILTROS SÍSMICOS</h2>
+          <h2>{{ transService.tr().filters.title }}</h2>
           <button class="close-btn" (click)="close.emit()">&times;</button>
         </div>
 
@@ -20,7 +21,7 @@ import { EarthquakeFilter } from '../../models/earthquake.model';
           <!-- Magnitud Mínima -->
           <div class="filter-group">
             <div class="filter-label-row">
-              <label>Magnitud Mínima</label>
+              <label>{{ transService.tr().filters.minMag }}</label>
               <span class="value-badge">M {{ minMag() | number:'1.1-1' }}+</span>
             </div>
             <input
@@ -41,28 +42,28 @@ import { EarthquakeFilter } from '../../models/earthquake.model';
 
           <!-- Rango Temporal -->
           <div class="filter-group">
-            <label>Periodo Temporal</label>
+            <label>{{ transService.tr().filters.timePeriod }}</label>
             <div class="pill-group">
-              <button [class.active]="daysBack() === 1" (click)="daysBack.set(1)">24 Horas</button>
-              <button [class.active]="daysBack() === 7" (click)="daysBack.set(7)">7 Días</button>
-              <button [class.active]="daysBack() === 30" (click)="daysBack.set(30)">30 Días</button>
+              <button [class.active]="daysBack() === 1" (click)="daysBack.set(1)">{{ transService.tr().filters.hours24 }}</button>
+              <button [class.active]="daysBack() === 7" (click)="daysBack.set(7)">{{ transService.tr().filters.days7 }}</button>
+              <button [class.active]="daysBack() === 30" (click)="daysBack.set(30)">{{ transService.tr().filters.days30 }}</button>
             </div>
           </div>
 
           <!-- Profundidad Focal -->
           <div class="filter-group">
-            <label>Profundidad Focal</label>
+            <label>{{ transService.tr().filters.focalDepth }}</label>
             <div class="pill-group">
-              <button [class.active]="maxDepth() === 0" (click)="maxDepth.set(0)">Todas</button>
-              <button [class.active]="maxDepth() === 30" (click)="maxDepth.set(30)">&lt; 30 km (Superficial)</button>
-              <button [class.active]="maxDepth() === 70" (click)="maxDepth.set(70)">&lt; 70 km (Intermedia)</button>
+              <button [class.active]="maxDepth() === 0" (click)="maxDepth.set(0)">{{ transService.tr().filters.all }}</button>
+              <button [class.active]="maxDepth() === 30" (click)="maxDepth.set(30)">{{ transService.tr().filters.shallow }}</button>
+              <button [class.active]="maxDepth() === 70" (click)="maxDepth.set(70)">{{ transService.tr().filters.intermediate }}</button>
             </div>
           </div>
         </div>
 
         <div class="drawer-footer">
-          <button class="btn-secondary" (click)="resetFilters()">Restablecer</button>
-          <button class="btn-primary" (click)="applyFilters()">Aplicar Filtros</button>
+          <button class="btn-secondary" (click)="resetFilters()">{{ transService.tr().filters.resetBtn }}</button>
+          <button class="btn-primary" (click)="applyFilters()">{{ transService.tr().filters.applyBtn }}</button>
         </div>
       </div>
     </div>
@@ -80,6 +81,7 @@ import { EarthquakeFilter } from '../../models/earthquake.model';
 
     .drawer-panel {
       width: 360px;
+      max-width: 100vw;
       height: 100%;
       border-radius: 0;
       border-left: 1px solid var(--border-subtle);
@@ -231,6 +233,7 @@ import { EarthquakeFilter } from '../../models/earthquake.model';
 })
 export class FiltersComponent {
   earthquakeService = inject(EarthquakeService);
+  transService = inject(TranslationService);
 
   @Output() close = new EventEmitter<void>();
 
