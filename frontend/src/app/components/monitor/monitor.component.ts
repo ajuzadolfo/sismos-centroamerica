@@ -37,9 +37,13 @@ import { WebSocketService } from '../../services/websocket.service';
   styles: [`
     .monitor-container {
       position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100vh;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
       overflow: hidden;
       background: var(--bg-space);
       z-index: 10;
@@ -50,23 +54,29 @@ import { WebSocketService } from '../../services/websocket.service';
       bottom: 0;
       left: 0;
       right: 0;
-      height: 24px;
+      min-height: 26px;
+      padding-top: 4px;
+      padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
+      padding-left: 12px;
+      padding-right: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(3, 7, 18, 0.88);
-      backdrop-filter: blur(10px);
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      z-index: 45;
+      background: rgba(3, 7, 18, 0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      z-index: 70;
       user-select: none;
       pointer-events: auto;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
     }
 
     .footer-text {
-      font-size: 0.68rem;
+      font-size: 0.72rem;
       font-weight: 500;
       letter-spacing: 0.06em;
-      color: #64748b;
+      color: #94a3b8;
       font-family: var(--font-sans);
     }
   `]

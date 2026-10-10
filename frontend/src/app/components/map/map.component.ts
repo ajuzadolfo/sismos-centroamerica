@@ -187,9 +187,27 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
   styles: [`
     .map-wrapper {
       position: relative;
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
       overflow: hidden;
+    }
+
+    :host ::ng-deep .maplibregl-ctrl-bottom-left,
+    :host ::ng-deep .maplibregl-ctrl-bottom-right {
+      bottom: 108px !important;
+      z-index: 20;
+    }
+
+    @media (max-width: 768px) {
+      :host ::ng-deep .maplibregl-ctrl-bottom-left {
+        display: none !important;
+      }
+      :host ::ng-deep .maplibregl-ctrl-bottom-right {
+        bottom: 96px !important;
+        transform: scale(0.85);
+        transform-origin: bottom right;
+      }
     }
 
     .map-container {
