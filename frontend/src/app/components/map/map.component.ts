@@ -590,7 +590,19 @@ export class MapComponent implements OnInit, OnDestroy {
       this.setupLayers();
       this.loadGeologicalFaults();
       this.loadVolcanicArc();
-      this.earthquakeService.loadRecentEarthquakes().subscribe();
+
+      // Renderizado inmediato de sismos en cuanto el mapa esté listo
+      const current = this.earthquakeService.filteredEarthquakes();
+      if (current.length > 0) {
+        this.updateMapData(current);
+      }
+
+      // Cargar/actualizar catálogo sísmico desde el backend
+      this.earthquakeService.loadRecentEarthquakes().subscribe({
+        next: () => {
+          this.updateMapData(this.earthquakeService.filteredEarthquakes());
+        }
+      });
     });
 
     // Detener órbita al interactuar manualmente con el mapa
@@ -672,10 +684,16 @@ export class MapComponent implements OnInit, OnDestroy {
   private setupLayers() {
     if (!this.map) return;
 
-    // 1. Fuente GeoJSON de sismos con clustering
+    // 1. Fuente GeoJSON de sismos con clustering (inicializada con datos inmediatos si ya existen)
+    const currentFeatures = this.earthquakeService.filteredEarthquakes();
+    const initialFeatures = currentFeatures.map(f => ({
+      ...f,
+      properties: { ...f.properties, id: f.id, eventId: f.id }
+    }));
+
     this.map.addSource('earthquakes', {
       type: 'geojson',
-      data: { type: 'FeatureCollection', features: [] },
+      data: { type: 'FeatureCollection', features: initialFeatures },
       cluster: true,
       clusterMaxZoom: 12,
       clusterRadius: 40
@@ -1312,7 +1330,12 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   private updateMapData(features: GeoJsonFeature[]) {
-    if (!this.map || !this.map.isStyleLoaded()) return;
+    if (!this.map) return;
+    if (!this.map.isStyleLoaded()) {
+      // Si el mapa aún está cargando su estilo, encolar para pintar en cuanto esté listo
+      this.map.once('load', () => this.updateMapData(features));
+      return;
+    }
 
     // Actualizar fuente sismos general inyectando el ID en properties para evitar sobreescritura por clustering
     const enrichedFeatures = features.map(f => ({
