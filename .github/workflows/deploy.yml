@@ -75,6 +75,9 @@ jobs:
     needs: test
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'test' }}
+      url: ${{ steps.frontend_deploy.outputs.url }}
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
@@ -163,6 +166,7 @@ jobs:
 
       # 7. Desplegar Frontend en Cloud Run
       - name: Desplegar Frontend en Cloud Run
+        id: frontend_deploy
         run: |
           gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
             --project="${{ env.PROJECT_ID }}" \
@@ -176,6 +180,9 @@ jobs:
             --min-instances=1 \
             --max-instances=3 \
             --quiet
+          
+          FRONTEND_URL=$(gcloud run services describe ${{ env.FRONTEND_SERVICE }} --project="${{ env.PROJECT_ID }}" --region="${{ env.REGION }}" --format='value(status.url)')
+          echo "url=$FRONTEND_URL" >> $GITHUB_OUTPUT
 
       # 8. Resumen de Despliegue con URLs Públicas
       - name: Publicar URLs en GitHub Summary
@@ -187,7 +194,7 @@ jobs:
           fi
           
           BACKEND_URL="${{ steps.backend_url.outputs.url }}"
-          FRONTEND_URL=$(gcloud run services describe ${{ env.FRONTEND_SERVICE }} --project="${{ env.PROJECT_ID }}" --region="${{ env.REGION }}" --format='value(status.url)')
+          FRONTEND_URL="${{ steps.frontend_deploy.outputs.url }}"
           
           echo "### 🚀 Despliegue en Google Cloud Run Completado ($ENV_LABEL)" >> $GITHUB_STEP_SUMMARY
           echo "- **Entorno:** \`$ENV_LABEL\` (Proyecto: \`${{ env.PROJECT_ID }}\`, Rama: \`$BRANCH\`)" >> $GITHUB_STEP_SUMMARY
