@@ -101,12 +101,13 @@ jobs:
       # 4. Obtener IP privada de Cloud SQL y Desplegar Backend en Cloud Run
       - name: Desplegar Backend en Cloud Run con Direct VPC Egress
         run: |
-          DB_IP=$(gcloud sql instances describe sismos-pg-test --format="value(ipAddresses.filter(type=PRIVATE).ipAddress)")
-          if [ -z "$DB_IP" ]; then
-            DB_IP=$(gcloud sql instances describe sismos-pg-test --format="value(ipAddresses.filter(type=PRIMARY).ipAddress)")
+          DB_IP=$(gcloud sql instances describe sismos-pg-test --format=json | jq -r '.ipAddresses[]? | select(.type=="PRIVATE") | .ipAddress' | head -n1)
+          if [ -z "$DB_IP" ] || [ "$DB_IP" = "null" ]; then
+            DB_IP=$(gcloud sql instances describe sismos-pg-test --format=json | jq -r '.ipAddresses[]? | select(.type=="PRIMARY") | .ipAddress' | head -n1)
           fi
           DB_PASS=$(gcloud secrets versions access latest --secret=db-password)
           echo "Conectando backend a BD en IP: $DB_IP"
+
           
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
             --image="${{ env.ARTIFACT_REPO }}/backend:${{ github.sha }}" \
