@@ -180,3 +180,12 @@ html, body {
   color: #f8fafc !important;
   background: transparent !important;
 }
+
+@media (max-width: 480px) {
+  .maplibregl-popup {
+    max-width: calc(100vw - 24px) !important;
+  }
+  .maplibregl-popup-content {
+    padding: 10px 12px !important;
+  }
+}

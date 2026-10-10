@@ -406,9 +406,16 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
 
     @media (max-width: 768px) {
       .camera-bar {
-        top: 84px;
+        top: 70px;
         padding: 4px 8px;
-        gap: 5px;
+        gap: 4px;
+        max-width: calc(100vw - 16px);
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: none;
+      }
+      .camera-bar::-webkit-scrollbar {
+        display: none;
       }
       .camera-title {
         display: none;
@@ -416,14 +423,21 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
       .preset-btn {
         padding: 3px 6px;
         font-size: 0.65rem;
+        flex-shrink: 0;
       }
       .orbit-btn {
         padding: 3px 6px;
         font-size: 0.65rem;
+        flex-shrink: 0;
       }
       .tilt-toggle-btn {
         padding: 3px 7px;
         font-size: 0.65rem;
+        flex-shrink: 0;
+      }
+
+      .legend-panel {
+        display: none;
       }
     }
   `]

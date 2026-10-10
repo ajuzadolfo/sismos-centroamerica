@@ -286,7 +286,22 @@ import { AudioAlertService } from '../../services/audio-alert.service';
 
     @media (max-width: 768px) {
       .hud-container {
+        bottom: 96px;
+        left: 8px;
+        width: calc(100vw - 16px);
+        max-width: 340px;
+      }
+      .hud-container.collapsed {
+        width: auto;
+      }
+      .hud-header {
+        padding: 6px 10px;
+      }
+      .station-sub {
         display: none;
+      }
+      .station-name {
+        font-size: 0.62rem;
       }
     }
   `]
@@ -298,7 +313,7 @@ export class SeismographHudComponent implements OnInit, OnDestroy {
   @Input() pitchText = '0° [2D]';
 
   audioService = inject(AudioAlertService);
-  isCollapsed = signal<boolean>(false);
+  isCollapsed = signal<boolean>(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
   amplitudeSpike = signal<number>(0.05);
 
   private animationFrameId: number | null = null;

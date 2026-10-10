@@ -175,6 +175,42 @@ import { EarthquakeService } from '../../services/earthquake.service';
       white-space: nowrap;
       font-size: 0.75rem;
     }
+
+    @media (max-width: 768px) {
+      .timeline-bar {
+        bottom: 28px;
+        left: 8px;
+        right: 8px;
+        height: 58px;
+        padding: 0 10px;
+        gap: 8px;
+      }
+
+      .play-btn {
+        width: 36px;
+        height: 36px;
+      }
+
+      .current-date-badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+      }
+
+      .reset-btn {
+        font-size: 0.68rem;
+        padding: 4px 8px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .speed-selector {
+        display: none;
+      }
+
+      .date-label {
+        display: none;
+      }
+    }
   `]
 })
 export class TimelineComponent implements OnDestroy {

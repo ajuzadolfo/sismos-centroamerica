@@ -378,6 +378,38 @@ import { environment } from '../../../environments/environment';
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
+
+    @media (max-width: 768px) {
+      .detail-card {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: 80vh;
+        border-radius: 20px 20px 0 0;
+        padding: 18px 16px;
+        z-index: 150;
+        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.85);
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+      }
+
+      .params-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .emoji-buttons {
+        gap: 6px;
+      }
+
+      .emoji-buttons button {
+        padding: 8px 4px;
+      }
+    }
   `]
 })
 export class DetailPanelComponent {

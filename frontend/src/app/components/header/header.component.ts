@@ -224,6 +224,73 @@ import { WebSocketService } from '../../services/websocket.service';
       background: rgba(255, 255, 255, 0.1);
       color: #ffffff;
     }
+
+    @media (max-width: 768px) {
+      .header {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        height: 56px;
+        padding: 0 12px;
+      }
+
+      .logo-group {
+        gap: 8px;
+      }
+
+      .title-container h1 {
+        font-size: 0.85rem;
+      }
+
+      .subtitle {
+        font-size: 0.58rem;
+      }
+
+      .metrics-group .metric-chip:first-child {
+        display: none;
+      }
+
+      .metric-chip {
+        padding: 4px 8px;
+        gap: 6px;
+      }
+
+      .metric-label {
+        font-size: 0.58rem;
+      }
+
+      .metric-value {
+        font-size: 0.8rem;
+      }
+
+      .btn-toggle {
+        padding: 6px 10px;
+        gap: 6px;
+      }
+
+      .btn-toggle span {
+        display: none;
+      }
+
+      .btn-icon {
+        width: 32px;
+        height: 32px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .subtitle {
+        display: none;
+      }
+
+      .metrics-group {
+        display: none;
+      }
+
+      .header {
+        height: 52px;
+      }
+    }
   `]
 })
 export class HeaderComponent {

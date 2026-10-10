@@ -80,6 +80,7 @@ import { EarthquakeFilter } from '../../models/earthquake.model';
 
     .drawer-panel {
       width: 360px;
+      max-width: 100vw;
       height: 100%;
       border-radius: 0;
       border-left: 1px solid var(--border-subtle);

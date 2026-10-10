@@ -637,6 +637,81 @@ interface StoryScene {
         padding: 28px 24px;
       }
     }
+
+    @media (max-width: 640px) {
+      .landing-nav {
+        height: 58px;
+        padding: 0 16px;
+      }
+
+      .brand-text .product {
+        display: none;
+      }
+
+      .btn-primary-glow {
+        padding: 8px 14px;
+        font-size: 0.78rem;
+        gap: 6px;
+      }
+
+      .scene-section {
+        padding: 0 12px;
+      }
+
+      .scene-card {
+        padding: 22px 18px;
+        border-radius: 18px;
+      }
+
+      .scene-title {
+        font-size: 1.45rem;
+      }
+
+      .scene-subtitle {
+        font-size: 0.9rem;
+        margin-bottom: 12px;
+      }
+
+      .scene-desc {
+        font-size: 0.82rem;
+        margin-bottom: 16px;
+        line-height: 1.5;
+      }
+
+      .scene-metric {
+        padding: 10px 14px;
+      }
+
+      .scene-metric .m-val {
+        font-size: 1.3rem;
+      }
+
+      .cta-group {
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      .btn-cta-main, .btn-cta-secondary {
+        padding: 11px 16px;
+        font-size: 0.85rem;
+      }
+
+      .landing-footer {
+        height: 50px;
+        padding: 0 16px;
+        justify-content: center;
+      }
+
+      .scroll-hint {
+        display: none;
+      }
+
+      .direct-link {
+        width: 100%;
+        text-align: center;
+      }
+    }
   `]
 })
 export class LandingComponent {
