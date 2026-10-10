@@ -25,6 +25,7 @@ public class SeismicEventController {
     private final CitizenReportRepository citizenReportRepository;
     private final GeoJsonMapper geoJsonMapper;
     private final com.sismos.service.UsgsIngestionService usgsIngestionService;
+    private final com.sismos.service.GeminiIntelligenceService geminiIntelligenceService;
 
     /**
      * Sincronización manual bajo demanda del catálogo histórico de la USGS.
@@ -105,5 +106,13 @@ public class SeismicEventController {
                     return ResponseEntity.ok(detail);
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Reporte sismológico y evaluación de emergencias generado por IA (Gemini 2.5 Flash).
+     */
+    @GetMapping("/{id}/intelligence-report")
+    public ResponseEntity<com.sismos.model.dto.SeismicIntelligenceReportDto> getIntelligenceReport(@PathVariable String id) {
+        return ResponseEntity.ok(geminiIntelligenceService.generateReport(id));
     }
 }

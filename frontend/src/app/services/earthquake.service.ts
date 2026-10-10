@@ -6,7 +6,8 @@ import {
   EarthquakeDetail,
   EarthquakeFilter,
   GeoJsonFeature,
-  GeoJsonFeatureCollection
+  GeoJsonFeatureCollection,
+  SeismicIntelligenceReport
 } from '../models/earthquake.model';
 
 @Injectable({
@@ -110,6 +111,10 @@ export class EarthquakeService {
     return this.http.get<EarthquakeDetail>(`${environment.apiUrl}/earthquakes/${id}`).pipe(
       tap(detail => this.selectedEarthquake.set(detail))
     );
+  }
+
+  getIntelligenceReport(id: string): Observable<SeismicIntelligenceReport> {
+    return this.http.get<SeismicIntelligenceReport>(`${environment.apiUrl}/earthquakes/${id}/intelligence-report`);
   }
 
   readonly selectedCitizenClusters = signal<GeoJsonFeatureCollection | null>(null);

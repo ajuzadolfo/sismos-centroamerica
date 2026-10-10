@@ -55,3 +55,15 @@ export interface EarthquakeFilter {
   maxDepth?: number;
   country?: string;
 }
+
+export interface SeismicIntelligenceReport {
+  eventId: string;
+  title: string;
+  modelUsed: string;
+  executiveSummary: string;
+  tectonicContext: string;
+  tsunamiRiskAssessment: string;
+  safetyRecommendations: string[];
+  estimatedPeakIntensity: string;
+  generatedAt: string;
+}

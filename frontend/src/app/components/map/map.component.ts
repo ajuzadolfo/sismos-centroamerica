@@ -13,6 +13,7 @@ import { Map, GeoJSONSource, Popup, NavigationControl, ScaleControl, setWorkerUr
 import { EarthquakeService } from '../../services/earthquake.service';
 import { AudioAlertService } from '../../services/audio-alert.service';
 import { TranslationService } from '../../services/translation.service';
+import { ShakeMapService } from '../../services/shakemap.service';
 import { SeismographHudComponent } from './seismograph-hud.component';
 import { environment } from '../../../environments/environment';
 import { GeoJsonFeature } from '../../models/earthquake.model';
@@ -492,6 +493,7 @@ export class MapComponent implements OnInit, OnDestroy {
   earthquakeService = inject(EarthquakeService);
   audioService = inject(AudioAlertService);
   transService = inject(TranslationService);
+  shakeMapService = inject(ShakeMapService);
 
   private map: Map | null = null;
   private activePopup: Popup | null = null;
@@ -530,6 +532,26 @@ export class MapComponent implements OnInit, OnDestroy {
     effect(() => {
       const clusters = this.earthquakeService.selectedCitizenClusters();
       this.updateCitizenClustersLayer(clusters);
+    });
+
+    // Efecto para visualizar las isolíneas de atenuación ShakeMap (MMI) del sismo seleccionado
+    effect(() => {
+      const selected = this.earthquakeService.selectedEarthquake();
+      if (this.map && this.map.getSource('shakemap-bands')) {
+        const source = this.map.getSource('shakemap-bands') as GeoJSONSource;
+        if (selected) {
+          const shakeResult = this.shakeMapService.generateShakeMap(
+            selected.longitude,
+            selected.latitude,
+            selected.magnitude,
+            selected.depth,
+            this.transService.currentLang() === 'en' ? 'en' : 'es'
+          );
+          source.setData(shakeResult.geojsonBands);
+        } else {
+          source.setData({ type: 'FeatureCollection', features: [] });
+        }
+      }
     });
   }
 
@@ -857,6 +879,36 @@ export class MapComponent implements OnInit, OnDestroy {
         'text-color': '#020617'
       }
     });
+
+    // 11. Capa de Atenuación Sísmica ShakeMap (MMI - Isolínas de Impacto Instrumental)
+    this.map.addSource('shakemap-bands', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
+    });
+
+    const beforePointId = this.map.getLayer('unclustered-point') ? 'unclustered-point' : undefined;
+
+    this.map.addLayer({
+      id: 'shakemap-bands-fill',
+      type: 'fill',
+      source: 'shakemap-bands',
+      paint: {
+        'fill-color': ['get', 'color'],
+        'fill-opacity': ['get', 'opacity']
+      }
+    }, beforePointId);
+
+    this.map.addLayer({
+      id: 'shakemap-bands-line',
+      type: 'line',
+      source: 'shakemap-bands',
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-width': 1.5,
+        'line-opacity': 0.7,
+        'line-dasharray': [3, 2]
+      }
+    }, beforePointId);
 
     // Eventos interactivos del mapa
     this.registerMapEvents();

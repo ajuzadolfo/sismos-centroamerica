@@ -1,0 +1,24 @@
+{
+  "name": "Sismos Centroamérica | Monitor Reactivo",
+  "short_name": "Sismos CA",
+  "description": "Plataforma interactiva de monitorización sísmica en tiempo real para Centroamérica con visualización 3D y telemetría comunitaria.",
+  "start_url": "/monitor",
+  "display": "standalone",
+  "background_color": "#070a12",
+  "theme_color": "#0b0f19",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["utilities", "weather", "education"]
+}

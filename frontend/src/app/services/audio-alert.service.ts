@@ -85,6 +85,24 @@ export class AudioAlertService {
     chimeGain.connect(ctx.destination);
     chimeOsc.start(now + 0.05);
     chimeOsc.stop(now + 0.9);
+
+    this.triggerHapticFeedback(magnitude);
+  }
+
+  triggerHapticFeedback(magnitude: number) {
+    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        if (magnitude >= 6.0) {
+          navigator.vibrate([300, 100, 300, 100, 600]);
+        } else if (magnitude >= 4.5) {
+          navigator.vibrate([200, 80, 200]);
+        } else {
+          navigator.vibrate(120);
+        }
+      } catch {
+        // Ignorar si el dispositivo bloquea la vibración
+      }
+    }
   }
 
   playTestChime() {
