@@ -28,9 +28,9 @@ public class DefaultSeismicMessageBroker implements SeismicMessageBroker {
     @Override
     public void publishSeismicEvent(GeoJsonFeature feature) {
         // 1. Despacho a clientes WebSocket STOMP
-        messagingTemplate.convertAndSend("/topic/earthquakes", feature);
+        Object mag = feature.getProperties() != null ? feature.getProperties().get("magnitude") : "N/A";
         log.info("[Event Broker: {}] Evento sismico despachado a /topic/earthquakes [ID: {}, Mag: {}]",
-                configuredBroker, feature.getId(), feature.getProperties().getMagnitude());
+                configuredBroker, feature.getId(), mag);
 
         // 2. Simulación / Integración con Cloud Pub/Sub si está habilitado
         if (gcpPubSubEnabled) {

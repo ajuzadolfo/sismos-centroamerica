@@ -47,8 +47,8 @@ public class AnalyticsController {
         int profundos = 0;  // > 70 km
 
         for (SeismicEvent e : events) {
-            double lat = e.getGeometry() != null ? e.getGeometry().getY() : 13.0;
-            double lon = e.getGeometry() != null ? e.getGeometry().getX() : -88.0;
+            double lat = e.getLatitude() != null ? e.getLatitude() : 13.0;
+            double lon = e.getLongitude() != null ? e.getLongitude() : -88.0;
             double mag = e.getMagnitude() != null ? e.getMagnitude().doubleValue() : 3.0;
             double depth = e.getDepth() != null ? e.getDepth().doubleValue() : 20.0;
 

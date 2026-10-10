@@ -94,8 +94,8 @@ public class GeminiIntelligenceService {
     }
 
     private String buildPrompt(SeismicEvent event) {
-        double lat = event.getGeometry() != null ? event.getGeometry().getY() : 0.0;
-        double lon = event.getGeometry() != null ? event.getGeometry().getX() : 0.0;
+        double lat = event.getLatitude() != null ? event.getLatitude() : 0.0;
+        double lon = event.getLongitude() != null ? event.getLongitude() : 0.0;
         double depth = event.getDepth() != null ? event.getDepth().doubleValue() : 10.0;
         double mag = event.getMagnitude() != null ? event.getMagnitude().doubleValue() : 4.0;
 
@@ -133,8 +133,8 @@ public class GeminiIntelligenceService {
     private SeismicIntelligenceReportDto generateFallbackReport(SeismicEvent event) {
         double mag = event.getMagnitude() != null ? event.getMagnitude().doubleValue() : 4.5;
         double depth = event.getDepth() != null ? event.getDepth().doubleValue() : 25.0;
-        double lat = event.getGeometry() != null ? event.getGeometry().getY() : 13.5;
-        double lon = event.getGeometry() != null ? event.getGeometry().getX() : -88.0;
+        double lat = event.getLatitude() != null ? event.getLatitude() : 13.5;
+        double lon = event.getLongitude() != null ? event.getLongitude() : -88.0;
 
         String summary;
         if (mag >= 6.5) {
@@ -159,8 +159,8 @@ public class GeminiIntelligenceService {
     }
 
     private String determineTectonicContext(SeismicEvent event) {
-        double lat = event.getGeometry() != null ? event.getGeometry().getY() : 13.5;
-        double lon = event.getGeometry() != null ? event.getGeometry().getX() : -88.0;
+        double lat = event.getLatitude() != null ? event.getLatitude() : 13.5;
+        double lon = event.getLongitude() != null ? event.getLongitude() : -88.0;
         double depth = event.getDepth() != null ? event.getDepth().doubleValue() : 20.0;
 
         // Zona del Pacífico / Fosa Mesoamericana
