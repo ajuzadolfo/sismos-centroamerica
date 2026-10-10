@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HeaderComponent } from '../header/header.component';
 import { MapComponent } from '../map/map.component';
@@ -32,19 +32,26 @@ import { WebSocketService } from '../../services/websocket.service';
   `,
   styles: [`
     .monitor-container {
-      position: relative;
+      position: fixed;
+      inset: 0;
       width: 100vw;
       height: 100vh;
       overflow: hidden;
       background: var(--bg-space);
+      z-index: 10;
     }
   `]
 })
-export class MonitorComponent {
+export class MonitorComponent implements OnInit, OnDestroy {
   private wsService = inject(WebSocketService);
   isFilterOpen = signal<boolean>(false);
 
-  constructor() {
+  ngOnInit() {
     this.wsService.connect();
   }
+
+  ngOnDestroy() {
+    this.wsService.disconnect();
+  }
 }
+

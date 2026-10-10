@@ -144,17 +144,19 @@ interface StoryScene {
   styles: [`
     :host {
       display: block;
-      width: 100vw;
+      width: 100%;
       min-height: 100vh;
       background: #03050a;
       color: #f1f5f9;
       font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
       overflow-x: hidden;
+      overflow-y: visible;
     }
 
     .landing-page {
       position: relative;
       width: 100%;
+      overflow: visible;
     }
 
     /* Navegación Superior Fija */
@@ -725,14 +727,15 @@ export class LandingComponent {
 
   @HostListener('window:scroll')
   onScroll() {
-    const scrollY = window.scrollY;
-    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-    const progress = maxScroll > 0 ? Math.min(Math.max(scrollY / maxScroll, 0), 1) : 0;
+    const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    const maxScroll = Math.max(1, (document.documentElement.scrollHeight || document.body.scrollHeight) - window.innerHeight);
+    const progress = Math.min(Math.max(scrollY / maxScroll, 0), 1);
     this.scrollProgress.set(progress);
   }
 
   scrollToScene(index: number) {
-    const targetY = (document.documentElement.scrollHeight - window.innerHeight) * (index / (this.scenes.length - 1));
+    const maxScroll = Math.max(1, (document.documentElement.scrollHeight || document.body.scrollHeight) - window.innerHeight);
+    const targetY = maxScroll * (index / (this.scenes.length - 1));
     window.scrollTo({ top: targetY, behavior: 'smooth' });
   }
 }
