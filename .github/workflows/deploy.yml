@@ -77,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.ref_name == 'main' && 'production' || 'test' }}
-      url: ${{ steps.frontend_deploy.outputs.url }}
+      url: ${{ github.ref_name == 'main' && 'https://sismos.foznasolutions.com' || steps.frontend_deploy.outputs.url }}
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
@@ -153,6 +153,12 @@ jobs:
           BACKEND_URL="${{ steps.backend_url.outputs.url }}"
           WS_URL=$(echo "$BACKEND_URL" | sed 's|^https|wss|; s|^http|ws|')
           
+          # Si estamos en Producción, apuntar al dominio personalizado
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            BACKEND_URL="https://api-sismos.foznasolutions.com"
+            WS_URL="wss://api-sismos.foznasolutions.com"
+          fi
+          
           echo "Configurando Frontend para conectar a: $BACKEND_URL"
           sed -i "s|http://localhost:8080/api/v1|${BACKEND_URL}/api/v1|g" frontend/src/environments/environment.ts
           sed -i "s|http://localhost:8080/ws/seismic|${WS_URL}/ws/seismic|g" frontend/src/environments/environment.ts
@@ -189,12 +195,14 @@ jobs:
         run: |
           BRANCH="${{ github.ref_name }}"
           ENV_LABEL="TEST"
+          FRONTEND_URL="${{ steps.frontend_deploy.outputs.url }}"
+          BACKEND_URL="${{ steps.backend_url.outputs.url }}"
+          
           if [ "$BRANCH" = "main" ]; then
             ENV_LABEL="PRODUCCIÓN"
+            FRONTEND_URL="https://sismos.foznasolutions.com (Directa: ${{ steps.frontend_deploy.outputs.url }})"
+            BACKEND_URL="https://api-sismos.foznasolutions.com (Directa: ${{ steps.backend_url.outputs.url }})"
           fi
-          
-          BACKEND_URL="${{ steps.backend_url.outputs.url }}"
-          FRONTEND_URL="${{ steps.frontend_deploy.outputs.url }}"
           
           echo "### 🚀 Despliegue en Google Cloud Run Completado ($ENV_LABEL)" >> $GITHUB_STEP_SUMMARY
           echo "- **Entorno:** \`$ENV_LABEL\` (Proyecto: \`${{ env.PROJECT_ID }}\`, Rama: \`$BRANCH\`)" >> $GITHUB_STEP_SUMMARY
