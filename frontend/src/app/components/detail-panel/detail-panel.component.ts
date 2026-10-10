@@ -22,12 +22,15 @@ import { environment } from '../../../environments/environment';
 
         <div class="card-body">
           <h2 class="epicenter-title">{{ event.place || event.title }}</h2>
-          <div class="timestamp-row">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
-            </svg>
-            <span>{{ event.time | date:'medium' }}</span>
+          <div class="timestamps-group">
+            <div class="time-item">
+              <span class="time-tag">LOCAL</span>
+              <span class="time-val">{{ event.time | date:'d MMM y, HH:mm:ss' }}</span>
+            </div>
+            <div class="time-item utc">
+              <span class="time-tag">UTC</span>
+              <span class="time-val">{{ event.time | date:'d MMM y, HH:mm:ss':'UTC' }}</span>
+            </div>
           </div>
 
           <div class="params-grid">
@@ -178,13 +181,40 @@ import { environment } from '../../../environments/environment';
       margin-bottom: 8px;
     }
 
-    .timestamp-row {
+    .timestamps-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 16px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+
+    .time-item {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 16px;
+      justify-content: space-between;
+      font-size: 0.75rem;
+    }
+
+    .time-item .time-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 0.06em;
+    }
+
+    .time-item.utc .time-tag {
+      color: var(--accent-cyan);
+    }
+
+    .time-item .time-val {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: #e2e8f0;
+      font-size: 0.75rem;
     }
 
     .params-grid {

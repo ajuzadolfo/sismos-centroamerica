@@ -883,15 +883,17 @@ export class MapComponent implements OnInit, OnDestroy {
       this.earthquakeService.selectEarthquake(feature.id as string);
       this.seismographHud?.triggerSeismicSpike(mag);
 
-      const timeStr = new Date(props['time']).toLocaleString('es', {
+      const dateObj = new Date(props['time']);
+      const localTimeStr = dateObj.toLocaleString('es', {
         dateStyle: 'medium',
         timeStyle: 'short'
       });
+      const utcTimeStr = dateObj.toISOString().replace('T', ' ').substring(0, 16) + ' UTC';
 
       const magColor = mag < 3.5 ? '#00e676' : (mag < 4.5 ? '#ffea00' : (mag < 6.0 ? '#ff9100' : '#ff1744'));
 
       const popupHtml = `
-        <div style="font-family: Outfit, sans-serif; min-width: 220px; padding: 4px;">
+        <div style="font-family: Outfit, sans-serif; min-width: 230px; padding: 4px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <span style="font-weight: 800; font-size: 1.25rem; color: ${magColor}; letter-spacing: -0.02em;">
               M ${mag.toFixed(1)}
@@ -906,12 +908,20 @@ export class MapComponent implements OnInit, OnDestroy {
             <div style="background: linear-gradient(90deg, #00f0ff, #8b5cf6); width: ${Math.min(100, (depth / 150) * 100)}%; height: 100%;"></div>
           </div>
 
-          <div style="font-weight: 600; font-size: 0.9rem; color: #f8fafc; margin-bottom: 4px; line-height: 1.3;">
+          <div style="font-weight: 600; font-size: 0.88rem; color: #f8fafc; margin-bottom: 8px; line-height: 1.3;">
             ${props['place'] || props['title']}
           </div>
 
-          <div style="font-size: 0.72rem; color: #64748b; margin-bottom: 12px; font-family: monospace;">
-            ${timeStr}
+          <!-- Marcas Temporales: Local y UTC -->
+          <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 8px; margin-bottom: 12px; font-size: 0.7rem; font-family: monospace;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+              <span style="color: #64748b; font-weight: 700;">LOCAL:</span>
+              <span style="color: #e2e8f0;">${localTimeStr}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #00f0ff; font-weight: 700;">UTC:</span>
+              <span style="color: #94a3b8;">${utcTimeStr}</span>
+            </div>
           </div>
 
           <div style="display: flex; gap: 6px;">
