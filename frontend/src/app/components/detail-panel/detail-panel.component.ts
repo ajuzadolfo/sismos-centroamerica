@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { EarthquakeService } from '../../services/earthquake.service';
+import { TranslationService } from '../../services/translation.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -35,23 +36,23 @@ import { environment } from '../../../environments/environment';
 
           <div class="params-grid">
             <div class="param-box">
-              <span class="param-label">Profundidad</span>
+              <span class="param-label">{{ transService.tr().detail.depth }}</span>
               <span class="param-val">{{ event.depth | number:'1.1-1' }} km</span>
             </div>
             <div class="param-box">
-              <span class="param-label">Estado</span>
+              <span class="param-label">{{ transService.tr().detail.status }}</span>
               <span class="param-val status-val" [class.reviewed]="event.status === 'REVIEWED'">
                 {{ event.status }}
               </span>
             </div>
             <div class="param-box">
-              <span class="param-label">Coordenadas</span>
+              <span class="param-label">{{ transService.tr().detail.coords }}</span>
               <span class="param-val coords-val">{{ event.latitude | number:'1.2-2' }}°, {{ event.longitude | number:'1.2-2' }}°</span>
             </div>
             <div class="param-box">
-              <span class="param-label">Tsunami</span>
+              <span class="param-label">{{ transService.tr().detail.tsunami }}</span>
               <span class="param-val" [class.tsunami-alert]="event.tsunamiAlert">
-                {{ event.tsunamiAlert ? 'ALERTA' : 'Sin alerta' }}
+                {{ event.tsunamiAlert ? transService.tr().detail.tsunamiAlert : transService.tr().detail.tsunamiNone }}
               </span>
             </div>
           </div>
@@ -60,52 +61,52 @@ import { environment } from '../../../environments/environment';
           <div class="citizen-section">
             <div class="citizen-header">
               <div class="citizen-title">
-                <span>¿LO SENTISTE?</span>
-                <span class="report-counter">{{ event.totalCitizenReports }} reportes</span>
+                <span>{{ transService.tr().detail.citizenTitle }}</span>
+                <span class="report-counter">{{ event.totalCitizenReports }} {{ transService.currentLang() === 'en' ? 'reports' : 'reportes' }}</span>
               </div>
               @if (event.averagePerceivedIntensity) {
                 <div class="avg-intensity">
-                  Promedio percibido: <strong>{{ event.averagePerceivedIntensity | number:'1.1-1' }} / 5</strong>
+                  {{ transService.tr().detail.avgIntensity }} <strong>{{ event.averagePerceivedIntensity | number:'1.1-1' }} / 5</strong>
                 </div>
               }
             </div>
 
             @if (reportStatus() === 'success') {
               <div class="reported-success">
-                <span>✓ {{ reportMessage() || '¡Gracias! Tu reporte de percepción ha sido verificado y registrado.' }}</span>
+                <span>✓ {{ reportMessage() || (transService.currentLang() === 'en' ? 'Thank you! Your report has been verified.' : '¡Gracias! Tu reporte de percepción ha sido verificado.') }}</span>
               </div>
             } @else if (reportStatus() === 'error') {
               <div class="reported-error">
                 <span>⚠ {{ reportMessage() }}</span>
-                <button class="retry-btn" (click)="resetReport()">Intentar de nuevo</button>
+                <button class="retry-btn" (click)="resetReport()">{{ transService.tr().detail.retry }}</button>
               </div>
             } @else if (reportStatus() === 'submitting') {
               <div class="reporting-loader">
                 <span class="spinner-small"></span>
-                <span>Validando geodésicamente con PostGIS...</span>
+                <span>{{ transService.tr().detail.sendingReport }}</span>
               </div>
             } @else {
-              <p class="citizen-desc">Toca un nivel según tu percepción en el lugar:</p>
+              <p class="citizen-desc">{{ transService.tr().detail.citizenDesc }}</p>
               <div class="emoji-buttons">
-                <button (click)="submitReport(event, 1, '😴')" title="Nivel 1: Imperceptible / Leve">
+                <button (click)="submitReport(event, 1, '😴')" title="1">
                   <span class="emoji">😴</span>
-                  <span class="lbl">Leve</span>
+                  <span class="lbl">{{ transService.tr().detail.weak }}</span>
                 </button>
-                <button (click)="submitReport(event, 2, '😐')" title="Nivel 2: Moderado">
+                <button (click)="submitReport(event, 2, '😐')" title="2">
                   <span class="emoji">😐</span>
-                  <span class="lbl">Moderado</span>
+                  <span class="lbl">{{ transService.tr().detail.moderate }}</span>
                 </button>
-                <button (click)="submitReport(event, 3, '😨')" title="Nivel 3: Fuerte">
+                <button (click)="submitReport(event, 3, '😨')" title="3">
                   <span class="emoji">😨</span>
-                  <span class="lbl">Fuerte</span>
+                  <span class="lbl">{{ transService.tr().detail.strong }}</span>
                 </button>
-                <button (click)="submitReport(event, 4, '😱')" title="Nivel 4: Muy Fuerte">
+                <button (click)="submitReport(event, 4, '😱')" title="4">
                   <span class="emoji">😱</span>
-                  <span class="lbl">Muy Fuerte</span>
+                  <span class="lbl">{{ transService.currentLang() === 'en' ? 'Very Strong' : 'Muy Fuerte' }}</span>
                 </button>
-                <button (click)="submitReport(event, 5, '🏚️')" title="Nivel 5: Pánico / Daños">
+                <button (click)="submitReport(event, 5, '🏚️')" title="5">
                   <span class="emoji">🏚️</span>
-                  <span class="lbl">Extremo</span>
+                  <span class="lbl">{{ transService.currentLang() === 'en' ? 'Extreme' : 'Extremo' }}</span>
                 </button>
               </div>
             }
@@ -414,6 +415,7 @@ import { environment } from '../../../environments/environment';
 })
 export class DetailPanelComponent {
   earthquakeService = inject(EarthquakeService);
+  transService = inject(TranslationService);
   private http = inject(HttpClient);
 
   reportStatus = signal<'idle' | 'submitting' | 'success' | 'error'>('idle');

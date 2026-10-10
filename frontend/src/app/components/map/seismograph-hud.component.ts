@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AudioAlertService } from '../../services/audio-alert.service';
+import { TranslationService } from '../../services/translation.service';
 
 @Component({
   selector: 'app-seismograph-hud',
@@ -22,8 +23,8 @@ import { AudioAlertService } from '../../services/audio-alert.service';
         <div class="station-meta">
           <span class="status-pulse"></span>
           <div class="station-info">
-            <span class="station-name">CENTRO DE MANDO // RED TELEMÉTRICA</span>
-            <span class="station-sub">BANDA ANCHA 100 Hz &bull; TIEMPO REAL</span>
+            <span class="station-name">{{ transService.tr().hud.stationName }}</span>
+            <span class="station-sub">{{ transService.tr().hud.stationSub }}</span>
           </div>
         </div>
 
@@ -32,7 +33,7 @@ import { AudioAlertService } from '../../services/audio-alert.service';
             class="action-btn"
             [class.active]="audioService.isSoundEnabled()"
             (click)="audioService.toggleSound()"
-            [title]="audioService.isSoundEnabled() ? 'Silenciar alertas acústicas' : 'Activar sonido de alerta sísmica'">
+            [title]="audioService.isSoundEnabled() ? transService.tr().hud.muteTitle : transService.tr().hud.unmuteTitle">
             @if (audioService.isSoundEnabled()) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -47,7 +48,7 @@ import { AudioAlertService } from '../../services/audio-alert.service';
             }
           </button>
 
-          <button class="action-btn collapse-toggle" (click)="toggleCollapse()" [title]="isCollapsed() ? 'Expandir HUD' : 'Minimizar HUD'">
+          <button class="action-btn collapse-toggle" (click)="toggleCollapse()" [title]="isCollapsed() ? transService.tr().hud.expand : transService.tr().hud.collapse">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               @if (isCollapsed()) {
                 <polyline points="18 15 12 9 6 15"></polyline>
@@ -65,21 +66,21 @@ import { AudioAlertService } from '../../services/audio-alert.service';
           <div class="oscilloscope-wrapper">
             <canvas #waveformCanvas class="waveform-canvas"></canvas>
             <div class="hud-grid-overlay"></div>
-            <div class="live-tag">TRAZA SÍSMICA VIRTUAL</div>
+            <div class="live-tag">{{ transService.tr().hud.signalStream }}</div>
           </div>
 
           <!-- Métricas de Telemetría Dinámica -->
           <div class="telemetry-bar">
             <div class="telem-item">
-              <span class="label">COORDENADAS</span>
+              <span class="label">{{ transService.tr().hud.telemCoords }}</span>
               <span class="val">{{ coordinatesText }}</span>
             </div>
             <div class="telem-item">
-              <span class="label">PITCH / ÁNGULO</span>
+              <span class="label">{{ transService.tr().hud.telemPitch }}</span>
               <span class="val">{{ pitchText }}</span>
             </div>
             <div class="telem-item">
-              <span class="label">AMPLITUD PGA</span>
+              <span class="label">{{ transService.tr().hud.telemAmplitude }}</span>
               <span class="val highlight" [class.alert]="amplitudeSpike() > 0.4">
                 {{ (amplitudeSpike() * 100).toFixed(1) }} %
               </span>
@@ -313,6 +314,7 @@ export class SeismographHudComponent implements OnInit, OnDestroy {
   @Input() pitchText = '0° [2D]';
 
   audioService = inject(AudioAlertService);
+  transService = inject(TranslationService);
   isCollapsed = signal<boolean>(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
   amplitudeSpike = signal<number>(0.05);
 

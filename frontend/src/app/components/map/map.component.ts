@@ -12,6 +12,7 @@ import { CommonModule } from '@angular/common';
 import { Map, GeoJSONSource, Popup, NavigationControl, ScaleControl, setWorkerUrl } from 'maplibre-gl';
 import { EarthquakeService } from '../../services/earthquake.service';
 import { AudioAlertService } from '../../services/audio-alert.service';
+import { TranslationService } from '../../services/translation.service';
 import { SeismographHudComponent } from './seismograph-hud.component';
 import { environment } from '../../../environments/environment';
 import { GeoJsonFeature } from '../../models/earthquake.model';
@@ -99,35 +100,35 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
 
       <!-- Barra Flotante de Modos de Cámara y Presets 3D Avanzados -->
       <div class="camera-bar glass-panel">
-        <span class="camera-title">CENTRO 3D</span>
+        <span class="camera-title">{{ transService.tr().camera.title }}</span>
         <div class="preset-buttons">
           <button
             class="preset-btn"
             [class.active]="activePreset() === 'todo'"
             (click)="setCameraPreset('todo')"
-            title="Vista global de Centroamérica">
-            🌐 Todo
+            [title]="transService.tr().camera.allTitle">
+            {{ transService.tr().camera.all }}
           </button>
           <button
             class="preset-btn"
             [class.active]="activePreset() === 'trinchera'"
             (click)="setCameraPreset('trinchera')"
-            title="Perspectiva 3D con relieve sobre la Fosa Mesoamericana">
-            🌋 Fosa 3D
+            [title]="transService.tr().camera.trenchTitle">
+            {{ transService.tr().camera.trench }}
           </button>
           <button
             class="preset-btn"
             [class.active]="activePreset() === 'norte'"
             (click)="setCameraPreset('norte')"
-            title="Enfocar relieve de Guatemala y El Salvador">
-            🇬🇹 Norte
+            [title]="transService.tr().camera.northTitle">
+            {{ transService.tr().camera.north }}
           </button>
           <button
             class="preset-btn"
             [class.active]="activePreset() === 'sur'"
             (click)="setCameraPreset('sur')"
-            title="Enfocar relieve de Costa Rica y Panamá">
-            🇨🇷 Sur
+            [title]="transService.tr().camera.southTitle">
+            {{ transService.tr().camera.south }}
           </button>
         </div>
 
@@ -135,22 +136,22 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
           class="orbit-btn"
           [class.active]="isOrbitActive()"
           (click)="toggleOrbitTour()"
-          title="Iniciar o detener recorrido orbital 360° en 3D">
+          [title]="transService.tr().camera.orbitTitle">
           <span class="orbit-icon">🔄</span>
-          <span>{{ isOrbitActive() ? 'ÓRBITA ON' : 'ÓRBITA' }}</span>
+          <span>{{ isOrbitActive() ? transService.tr().camera.orbitOn : transService.tr().camera.orbitOff }}</span>
         </button>
 
         <button
           class="tilt-toggle-btn"
           [class.active]="is3DMode()"
           (click)="toggle3DMode()"
-          title="Alternar inclinación y perspectiva 3D del terreno">
+          [title]="transService.tr().camera.tiltTitle">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
             <polyline points="2 17 12 22 22 17"></polyline>
             <polyline points="2 12 12 17 22 12"></polyline>
           </svg>
-          <span>{{ is3DMode() ? '3D TERRENO' : '2D PLANO' }}</span>
+          <span>{{ is3DMode() ? transService.tr().camera.mode3d : transService.tr().camera.mode2d }}</span>
         </button>
       </div>
 
@@ -165,20 +166,20 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
       @if (earthquakeService.loading()) {
         <div class="loading-overlay glass-panel">
           <div class="spinner"></div>
-          <span>Sincronizando catálogo y relieve 3D...</span>
+          <span>{{ transService.tr().hud.loadingSync }}</span>
         </div>
       }
 
       <!-- Leyenda de Magnitud -->
       <div class="legend-panel glass-panel">
-        <div class="legend-title">MAGNITUD (Mw)</div>
+        <div class="legend-title">{{ transService.tr().legend.title }}</div>
         <div class="legend-items">
-          <div class="legend-item"><span class="dot mag-low"></span> &lt; 3.5 Menor</div>
-          <div class="legend-item"><span class="dot mag-med"></span> 3.5 - 4.4 Moderado</div>
-          <div class="legend-item"><span class="dot mag-high"></span> 4.5 - 5.9 Fuerte</div>
-          <div class="legend-item"><span class="dot mag-major"></span> &ge; 6.0 Mayor</div>
+          <div class="legend-item"><span class="dot mag-low"></span> {{ transService.tr().legend.minor }}</div>
+          <div class="legend-item"><span class="dot mag-med"></span> {{ transService.tr().legend.moderate }}</div>
+          <div class="legend-item"><span class="dot mag-high"></span> {{ transService.tr().legend.strong }}</div>
+          <div class="legend-item"><span class="dot mag-major"></span> {{ transService.tr().legend.major }}</div>
           <div class="legend-divider"></div>
-          <div class="legend-item"><span class="hazard-stripe"></span> Fallas Tectónicas</div>
+          <div class="legend-item"><span class="hazard-stripe"></span> {{ transService.tr().legend.faults }}</div>
         </div>
       </div>
     </div>
@@ -472,6 +473,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
   earthquakeService = inject(EarthquakeService);
   audioService = inject(AudioAlertService);
+  transService = inject(TranslationService);
 
   private map: Map | null = null;
   private activePopup: Popup | null = null;
@@ -960,7 +962,7 @@ export class MapComponent implements OnInit, OnDestroy {
               M ${mag.toFixed(1)}
             </span>
             <span style="font-size: 0.72rem; color: #94a3b8; font-family: monospace; background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 4px;">
-              ${depth.toFixed(1)} km prof.
+              ${depth.toFixed(1)} km ${this.transService.tr().popup.depth}
             </span>
           </div>
 
@@ -977,11 +979,11 @@ export class MapComponent implements OnInit, OnDestroy {
           <!-- Marcas Temporales Ajustadas (24h sin saltos de línea) -->
           <div style="background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; font-size: 0.72rem; font-family: monospace;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-              <span style="color: #64748b; font-weight: 700; font-size: 0.64rem; letter-spacing: 0.04em;">LOCAL (UTC-6)</span>
+              <span style="color: #64748b; font-weight: 700; font-size: 0.64rem; letter-spacing: 0.04em;">${this.transService.tr().popup.localTime}</span>
               <span style="color: #f1f5f9; font-weight: 600;">${caFormatted}</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: #00f0ff; font-weight: 700; font-size: 0.64rem; letter-spacing: 0.04em;">OFICIAL UTC</span>
+              <span style="color: #00f0ff; font-weight: 700; font-size: 0.64rem; letter-spacing: 0.04em;">${this.transService.tr().popup.utcTime}</span>
               <span style="color: #94a3b8; font-weight: 600;">${utcFormatted}</span>
             </div>
           </div>
@@ -999,7 +1001,7 @@ export class MapComponent implements OnInit, OnDestroy {
             cursor: pointer;
             box-shadow: 0 2px 10px rgba(0, 240, 255, 0.25);
             transition: transform 0.15s ease;
-          ">¿Lo sentiste? Reportar</button>
+          ">${this.transService.tr().popup.reportBtn}</button>
         </div>
       `;
 

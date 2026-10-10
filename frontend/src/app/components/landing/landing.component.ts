@@ -1,6 +1,7 @@
-import { Component, HostListener, signal, computed } from '@angular/core';
+import { Component, HostListener, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { TranslationService } from '../../services/translation.service';
 
 interface StoryScene {
   id: number;
@@ -28,14 +29,24 @@ interface StoryScene {
             <span class="aura"></span>
           </div>
           <div class="brand-text">
-            <span class="company">FOZNA SOLUTIONS</span>
-            <span class="product">MONITOR SÍSMICO CENTROAMÉRICA</span>
+            <span class="company">{{ transService.tr().landing.company }}</span>
+            <span class="product">{{ transService.tr().landing.product }}</span>
           </div>
         </div>
 
         <nav class="nav-actions">
+          <!-- Selector de Idioma ES / EN -->
+          <button
+            class="btn-lang-toggle"
+            (click)="transService.toggleLanguage()"
+            [title]="transService.currentLang() === 'es' ? 'Switch to English' : 'Cambiar a Español'">
+            <span class="lang-opt" [class.active]="transService.currentLang() === 'es'">ES</span>
+            <span class="lang-separator">/</span>
+            <span class="lang-opt" [class.active]="transService.currentLang() === 'en'">EN</span>
+          </button>
+
           <a routerLink="/monitor" class="btn-primary-glow">
-            <span>Acceder al Monitor en Vivo</span>
+            <span>{{ transService.tr().landing.navCta }}</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
@@ -49,7 +60,7 @@ interface StoryScene {
 
         <!-- Capas de Diorama Fotorrealistas (Transición continua por scroll) -->
         <div class="diorama-layers">
-          @for (scene of scenes; track scene.id; let idx = $index) {
+          @for (scene of scenes(); track scene.id; let idx = $index) {
             <div 
               class="diorama-layer" 
               [class.active]="activeSceneIndex() === idx"
@@ -74,7 +85,7 @@ interface StoryScene {
       <aside class="scene-hud">
         <div class="hud-track">
           <div class="hud-fill" [style.height.%]="scrollProgress() * 100"></div>
-          @for (scene of scenes; track scene.id; let idx = $index) {
+          @for (scene of scenes(); track scene.id; let idx = $index) {
             <button
               class="hud-dot"
               [class.active]="activeSceneIndex() === idx"
@@ -89,7 +100,7 @@ interface StoryScene {
 
       <!-- Pista de Desplazamiento Vertical (Scroll Track) -->
       <div class="scroll-track">
-        @for (scene of scenes; track scene.id; let idx = $index) {
+        @for (scene of scenes(); track scene.id; let idx = $index) {
           <section class="scene-section" [id]="'scene-' + idx">
             <div class="scene-card glass-card" [class.visible]="activeSceneIndex() === idx">
               <div class="badge-pill" [style.color]="scene.accentColor" [style.borderColor]="scene.accentColor">
@@ -109,13 +120,13 @@ interface StoryScene {
               @if (idx === 4) {
                 <div class="cta-group">
                   <a routerLink="/monitor" class="btn-cta-main">
-                    <span>Abrir Monitor en Vivo</span>
+                    <span>{{ transService.tr().landing.exploreCta }}</span>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
                   </a>
                   <a href="https://github.com/ajuzadolfo/sismos-centroamerica" target="_blank" rel="noopener" class="btn-cta-secondary">
-                    <span>Código en GitHub</span>
+                    <span>GitHub</span>
                   </a>
                 </div>
               }
@@ -130,12 +141,12 @@ interface StoryScene {
           <span class="mouse-icon">
             <span class="wheel"></span>
           </span>
-          <span class="hint-text">Desplaza para navegar el diorama 3D</span>
+          <span class="hint-text">{{ transService.tr().landing.scrollHint }}</span>
         </div>
 
         <div class="direct-link">
           <a routerLink="/monitor" class="skip-btn">
-            Saltar animación e ir directamente al Mapa &rarr;
+            {{ transService.tr().landing.skipLink }}
           </a>
         </div>
       </footer>
@@ -227,6 +238,43 @@ interface StoryScene {
       font-weight: 600;
       letter-spacing: 0.06em;
       color: #00e5ff;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-lang-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 7px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: var(--font-mono, monospace);
+      color: #94a3b8;
+      transition: all 0.2s ease;
+    }
+    .btn-lang-toggle:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(0, 229, 255, 0.4);
+    }
+    .lang-opt {
+      transition: color 0.2s ease;
+    }
+    .lang-opt.active {
+      color: #00e5ff;
+      text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+    }
+    .lang-separator {
+      color: rgba(255, 255, 255, 0.2);
+      font-size: 0.65rem;
     }
 
     .btn-primary-glow {
@@ -715,79 +763,46 @@ interface StoryScene {
   `]
 })
 export class LandingComponent {
+  transService = inject(TranslationService);
   scrollProgress = signal<number>(0);
 
-  scenes: StoryScene[] = [
-    {
-      id: 1,
-      badge: 'MONITORIZACIÓN CONTINUA',
-      title: 'Centroamérica en Movimiento',
-      subtitle: 'Una de las regiones sísmicamente más dinámicas del planeta',
-      description: 'Supervisión constante de la interacción entre la placa de Cocos y la placa del Caribe a lo largo del istmo centroamericano.',
-      metricValue: '6 Países',
-      metricLabel: 'Supervisión regional unificada',
-      accentColor: '#00e5ff',
-      imageUrl: '/dioramas/scene-1.jpg'
-    },
-    {
-      id: 2,
-      badge: 'DETECCIÓN PROFUNDA',
-      title: 'Falla Tectónica y Subducción',
-      subtitle: 'Cuando la tierra cruje, cada segundo cuenta',
-      description: 'Ingesta automatizada de eventos telúricos desde los feeds geofísicos del USGS y redes FDSN en menos de 60 segundos.',
-      metricValue: '< 60s',
-      metricLabel: 'Tiempo de detección e ingesta',
-      accentColor: '#ff9100',
-      imageUrl: '/dioramas/scene-2.jpg'
-    },
-    {
-      id: 3,
-      badge: 'PRECISIÓN POSTGIS',
-      title: 'Observatorio en Superficie',
-      subtitle: 'Matemática espacial en milisegundos',
-      description: 'Cálculos de proximidad geodésica esferoidal, hipocentro y magnitud acelerados mediante PostgreSQL 16 y PostGIS 3.4.',
-      metricValue: '< 50ms',
-      metricLabel: 'Latencia p95 de consulta espacial',
-      accentColor: '#00e676',
-      imageUrl: '/dioramas/scene-3.jpg'
-    },
-    {
-      id: 4,
-      badge: 'ARQUITECTURA SERVERLESS',
-      title: 'La Nube Distribuida',
-      subtitle: 'Streaming sin fricción a escala regional',
-      description: 'Arquitectura en Google Cloud Run con Direct VPC Egress, WebSockets STOMP bidireccionales y coordinación distribuida ShedLock.',
-      metricValue: '99.9%',
-      metricLabel: 'Disponibilidad multi-zona',
-      accentColor: '#38bdf8',
-      imageUrl: '/dioramas/scene-4.jpg'
-    },
-    {
-      id: 5,
-      badge: 'SISMOLOGÍA CIUDADANA',
-      title: 'Tú también eres el Sensor',
-      subtitle: 'Reporta en 3 clics y mapea la intensidad',
-      description: 'Validación geométrica de reportes comunitarios "¿Lo sentiste?" con agregación en tiempo real para proteger a la población.',
-      metricValue: '100% En Vivo',
-      metricLabel: 'WebSockets y mapa vectorial interactivo',
-      accentColor: '#ff1744',
-      imageUrl: '/dioramas/scene-5.jpg'
-    }
-  ];
+  readonly scenes = computed<StoryScene[]>(() => {
+    const trScenes = this.transService.tr().landing.scenes;
+    const colors = ['#00e5ff', '#ff9100', '#00e676', '#38bdf8', '#ff1744'];
+    const images = [
+      '/dioramas/scene-1.jpg',
+      '/dioramas/scene-2.jpg',
+      '/dioramas/scene-3.jpg',
+      '/dioramas/scene-4.jpg',
+      '/dioramas/scene-5.jpg'
+    ];
+
+    return trScenes.map((s, idx) => ({
+      id: idx + 1,
+      badge: s.badge,
+      title: s.title,
+      subtitle: s.subtitle,
+      description: s.desc,
+      metricValue: s.metricVal,
+      metricLabel: s.metricLbl,
+      accentColor: colors[idx] || '#00e5ff',
+      imageUrl: images[idx] || `/dioramas/scene-${idx + 1}.jpg`
+    }));
+  });
 
   activeSceneIndex = computed(() => {
     const p = this.scrollProgress();
-    const count = this.scenes.length;
+    const count = this.scenes().length;
     const index = Math.min(Math.floor(p * count), count - 1);
     return Math.max(0, index);
   });
 
-  activeScene = computed(() => this.scenes[this.activeSceneIndex()]);
+  activeScene = computed(() => this.scenes()[this.activeSceneIndex()]);
 
   layerTransform(idx: number): string {
     const p = this.scrollProgress();
     // Parallax suave dentro de cada escena activa
-    const sceneProgress = Math.max(0, Math.min(1, (p * this.scenes.length) - idx));
+    const sceneProgress = Math.max(0, Math.min(1, (p * this.scenes().length) - idx));
     const scale = 1 + (sceneProgress * 0.07);
     const translateY = (sceneProgress - 0.5) * -25;
     return `scale(${scale}) translateY(${translateY}px)`;
@@ -810,7 +825,7 @@ export class LandingComponent {
 
   scrollToScene(index: number) {
     const maxScroll = Math.max(1, (document.documentElement.scrollHeight || document.body.scrollHeight) - window.innerHeight);
-    const targetY = maxScroll * (index / (this.scenes.length - 1));
+    const targetY = maxScroll * (index / (this.scenes().length - 1));
     window.scrollTo({ top: targetY, behavior: 'smooth' });
   }
 }
