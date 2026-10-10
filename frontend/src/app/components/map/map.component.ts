@@ -884,22 +884,44 @@ export class MapComponent implements OnInit, OnDestroy {
       this.seismographHud?.triggerSeismicSpike(mag);
 
       const dateObj = new Date(props['time']);
-      const caTimeStr = dateObj.toLocaleString('es-GT', {
+      const caDate = dateObj.toLocaleDateString('es', {
         timeZone: 'America/Guatemala',
-        dateStyle: 'medium',
-        timeStyle: 'short'
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
       });
-      const utcTimeStr = dateObj.toISOString().replace('T', ' ').substring(0, 16) + ' UTC';
+      const caHour = dateObj.toLocaleTimeString('es', {
+        timeZone: 'America/Guatemala',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      const caFormatted = `${caDate}, ${caHour}`;
+
+      const utcDate = dateObj.toLocaleDateString('es', {
+        timeZone: 'UTC',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+      const utcHour = dateObj.toLocaleTimeString('es', {
+        timeZone: 'UTC',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      const utcFormatted = `${utcDate}, ${utcHour} UTC`;
 
       const magColor = mag < 3.5 ? '#00e676' : (mag < 4.5 ? '#ffea00' : (mag < 6.0 ? '#ff9100' : '#ff1744'));
 
       const popupHtml = `
-        <div style="font-family: Outfit, sans-serif; min-width: 240px; padding: 4px;">
+        <div style="font-family: Outfit, sans-serif; min-width: 250px; max-width: 290px; padding: 2px;">
+          <!-- Cabecera de Magnitud y Profundidad -->
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <span style="font-weight: 800; font-size: 1.25rem; color: ${magColor}; letter-spacing: -0.02em;">
               M ${mag.toFixed(1)}
             </span>
-            <span style="font-size: 0.72rem; color: #94a3b8; font-family: monospace; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px;">
+            <span style="font-size: 0.72rem; color: #94a3b8; font-family: monospace; background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 4px;">
               ${depth.toFixed(1)} km prof.
             </span>
           </div>
@@ -909,46 +931,37 @@ export class MapComponent implements OnInit, OnDestroy {
             <div style="background: linear-gradient(90deg, #00f0ff, #8b5cf6); width: ${Math.min(100, (depth / 150) * 100)}%; height: 100%;"></div>
           </div>
 
-          <div style="font-weight: 600; font-size: 0.88rem; color: #f8fafc; margin-bottom: 8px; line-height: 1.3;">
+          <!-- Título del Epicentro -->
+          <div style="font-weight: 600; font-size: 0.88rem; color: #f8fafc; margin-bottom: 10px; line-height: 1.35;">
             ${props['place'] || props['title']}
           </div>
 
-          <!-- Marcas Temporales: Centroamérica (UTC-6) y UTC -->
-          <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 8px; margin-bottom: 12px; font-size: 0.7rem; font-family: monospace;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <span style="color: #64748b; font-weight: 700;">CENTROAMÉRICA:</span>
-              <span style="color: #e2e8f0;">${caTimeStr}</span>
+          <!-- Marcas Temporales Ajustadas (24h sin saltos de línea) -->
+          <div style="background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; font-size: 0.72rem; font-family: monospace;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="color: #64748b; font-weight: 700; font-size: 0.64rem; letter-spacing: 0.04em;">LOCAL (UTC-6)</span>
+              <span style="color: #f1f5f9; font-weight: 600;">${caFormatted}</span>
             </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #00f0ff; font-weight: 700;">UNIVERSAL (UTC):</span>
-              <span style="color: #94a3b8;">${utcTimeStr}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: #00f0ff; font-weight: 700; font-size: 0.64rem; letter-spacing: 0.04em;">OFICIAL UTC</span>
+              <span style="color: #94a3b8; font-weight: 600;">${utcFormatted}</span>
             </div>
           </div>
 
-          <div style="display: flex; gap: 6px;">
-            <button id="popup-report-btn" style="
-              flex: 1;
-              padding: 7px 10px;
-              background: linear-gradient(135deg, #00f0ff 0%, #0284c7 100%);
-              border: none;
-              border-radius: 6px;
-              color: #020617;
-              font-weight: 700;
-              font-size: 0.75rem;
-              cursor: pointer;
-            ">¿Lo sentiste?</button>
-
-            <button id="popup-3d-btn" style="
-              padding: 7px 10px;
-              background: rgba(139, 92, 246, 0.2);
-              border: 1px solid rgba(139, 92, 246, 0.4);
-              border-radius: 6px;
-              color: #c4b5fd;
-              font-weight: 700;
-              font-size: 0.75rem;
-              cursor: pointer;
-            ">3D</button>
-          </div>
+          <!-- Botón de Reporte Ciudadano a Ancho Completo -->
+          <button id="popup-report-btn" style="
+            width: 100%;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #00f0ff 0%, #0284c7 100%);
+            border: none;
+            border-radius: 8px;
+            color: #020617;
+            font-weight: 700;
+            font-size: 0.8rem;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 240, 255, 0.25);
+            transition: transform 0.15s ease;
+          ">¿Lo sentiste? Reportar</button>
         </div>
       `;
 
@@ -959,25 +972,12 @@ export class MapComponent implements OnInit, OnDestroy {
         .setHTML(popupHtml)
         .addTo(this.map!);
 
-      // Escuchar eventos en botones del popup
+      // Escuchar evento de reporte ciudadano
       setTimeout(() => {
         const reportBtn = document.getElementById('popup-report-btn');
         if (reportBtn) {
           reportBtn.onclick = () => {
             this.earthquakeService.selectEarthquake(feature.id as string);
-          };
-        }
-        const tiltBtn = document.getElementById('popup-3d-btn');
-        if (tiltBtn) {
-          tiltBtn.onclick = () => {
-            this.map!.flyTo({
-              center: coords,
-              zoom: 8.5,
-              pitch: 62,
-              bearing: -15,
-              duration: 1500
-            });
-            this.is3DMode.set(true);
           };
         }
       }, 100);
