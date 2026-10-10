@@ -153,6 +153,10 @@ html, body {
 }
 
 /* MapLibre Popup Styling Customization */
+.maplibregl-popup {
+  max-width: 420px !important;
+}
+
 .maplibregl-popup-content {
   background: rgba(15, 23, 42, 0.95) !important;
   backdrop-filter: blur(12px) !important;
