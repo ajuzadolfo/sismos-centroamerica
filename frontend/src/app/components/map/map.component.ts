@@ -177,6 +177,8 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
           <div class="legend-item"><span class="dot mag-med"></span> 3.5 - 4.4 Moderado</div>
           <div class="legend-item"><span class="dot mag-high"></span> 4.5 - 5.9 Fuerte</div>
           <div class="legend-item"><span class="dot mag-major"></span> &ge; 6.0 Mayor</div>
+          <div class="legend-divider"></div>
+          <div class="legend-item"><span class="hazard-stripe"></span> Fallas Tectónicas</div>
         </div>
       </div>
     </div>
@@ -394,6 +396,28 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
     .dot.mag-med { background: #ffea00; box-shadow: 0 0 6px #ffea00; }
     .dot.mag-high { background: #ff9100; box-shadow: 0 0 6px #ff9100; }
     .dot.mag-major { background: #ff1744; box-shadow: 0 0 8px #ff1744; }
+
+    .legend-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.08);
+      margin: 4px 0;
+    }
+
+    .hazard-stripe {
+      width: 14px;
+      height: 8px;
+      border-radius: 2px;
+      background: repeating-linear-gradient(
+        -45deg,
+        #ffd600,
+        #ffd600 3px,
+        #000000 3px,
+        #000000 6px
+      );
+      box-shadow: 0 0 6px rgba(255, 214, 0, 0.45);
+      border: 1px solid rgba(0, 0, 0, 0.7);
+      flex-shrink: 0;
+    }
 
     .legend-tip {
       margin-top: 8px;
@@ -1014,42 +1038,65 @@ export class MapComponent implements OnInit, OnDestroy {
           data: faultsData
         });
 
-        // 1. Resplandor exterior difuso
+        // 1. Resplandor difuso de precaución/advertencia (Hazard Glow)
         this.map.addLayer({
-          id: 'faults-outer-glow',
+          id: 'faults-hazard-glow',
           type: 'line',
           source: 'geological-faults',
           paint: {
-            'line-color': '#ff0055',
-            'line-width': 8,
+            'line-color': '#ffd600',
+            'line-width': 9,
             'line-blur': 6,
-            'line-opacity': 0.5
+            'line-opacity': 0.45
           }
         });
 
-        // 2. Halo neón medio
+        // 2. Base de contraste negro de seguridad (Black Border Casing)
         this.map.addLayer({
-          id: 'faults-neon-aura',
+          id: 'faults-black-casing',
           type: 'line',
           source: 'geological-faults',
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round'
+          },
           paint: {
-            'line-color': '#ff2a6d',
-            'line-width': 3.2,
-            'line-blur': 1.2,
-            'line-opacity': 0.85
-          }
-        });
-
-        // 3. Núcleo láser brillante discontinuo
-        this.map.addLayer({
-          id: 'faults-laser-core',
-          type: 'line',
-          source: 'geological-faults',
-          paint: {
-            'line-color': '#ffffff',
-            'line-width': 1.2,
-            'line-dasharray': [4, 3],
+            'line-color': '#000000',
+            'line-width': 5.4,
             'line-opacity': 0.95
+          }
+        });
+
+        // 3. Pista amarilla continua de alta visibilidad (Caution Yellow Core)
+        this.map.addLayer({
+          id: 'faults-yellow-track',
+          type: 'line',
+          source: 'geological-faults',
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round'
+          },
+          paint: {
+            'line-color': '#ffd600',
+            'line-width': 3.4,
+            'line-opacity': 1.0
+          }
+        });
+
+        // 4. Franjas negras discontinuas de advertencia industrial (Hazard Caution Stripes)
+        this.map.addLayer({
+          id: 'faults-hazard-stripes',
+          type: 'line',
+          source: 'geological-faults',
+          layout: {
+            'line-cap': 'square',
+            'line-join': 'round'
+          },
+          paint: {
+            'line-color': '#000000',
+            'line-width': 3.4,
+            'line-dasharray': [2.5, 2.5],
+            'line-opacity': 1.0
           }
         });
       },
