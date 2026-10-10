@@ -48,7 +48,8 @@ locals {
     "roles/artifactregistry.writer",
     "roles/iam.serviceAccountUser",
     "roles/secretmanager.secretAccessor",
-    "roles/cloudsql.client"
+    "roles/cloudsql.client",
+    "roles/cloudsql.viewer"
   ]
 }
 

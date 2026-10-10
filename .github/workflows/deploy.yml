@@ -17,16 +17,18 @@ permissions:
 
 env:
   REGION: us-central1
-  # Por defecto el proyecto base es TEST; en 'main' se puede sobreescribir con PROD_PROJECT_ID si existe
-  PROJECT_ID: sismos-centroamerica-test
-  ARTIFACT_REPO: us-central1-docker.pkg.dev/sismos-centroamerica-test/sismos-repo
   BACKEND_SERVICE: sismos-backend
   FRONTEND_SERVICE: sismos-frontend
   VPC_NETWORK: sismos-vpc
   VPC_SUBNET: cloudrun-subnet
-  CLOUD_SQL_INSTANCE: sismos-centroamerica-test:us-central1:sismos-pg-test
-  WIF_PROVIDER: projects/1092009103926/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
-  WIF_SERVICE_ACCOUNT: github-deployer@sismos-centroamerica-test.iam.gserviceaccount.com
+
+  # Variables dinámicas según la rama (main = PRODUCCIÓN, develop = TEST)
+  PROJECT_ID: ${{ github.ref_name == 'main' && 'sismos-centroamerica-prod' || 'sismos-centroamerica-test' }}
+  ARTIFACT_REPO: us-central1-docker.pkg.dev/${{ github.ref_name == 'main' && 'sismos-centroamerica-prod' || 'sismos-centroamerica-test' }}/sismos-repo
+  CLOUD_SQL_INSTANCE: ${{ github.ref_name == 'main' && 'sismos-centroamerica-prod:us-central1:sismos-pg-test' || 'sismos-centroamerica-test:us-central1:sismos-pg-test' }}
+  WIF_PROVIDER: ${{ github.ref_name == 'main' && 'projects/26325234019/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider' || 'projects/1092009103926/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider' }}
+  WIF_SERVICE_ACCOUNT: github-deployer@${{ github.ref_name == 'main' && 'sismos-centroamerica-prod' || 'sismos-centroamerica-test' }}.iam.gserviceaccount.com
+
 
 jobs:
 
@@ -108,15 +110,15 @@ jobs:
       # 4. Obtener IP privada de Cloud SQL y Desplegar Backend en Cloud Run
       - name: Desplegar Backend en Cloud Run con Direct VPC Egress
         run: |
-          DB_IP=$(gcloud sql instances describe sismos-pg-test --format=json | jq -r '.ipAddresses[]? | select(.type=="PRIVATE") | .ipAddress' | head -n1)
+          DB_IP=$(gcloud sql instances describe sismos-pg-test --project=${{ env.PROJECT_ID }} --format=json | jq -r '.ipAddresses[]? | select(.type=="PRIVATE") | .ipAddress' | head -n1)
           if [ -z "$DB_IP" ] || [ "$DB_IP" = "null" ]; then
-            DB_IP=$(gcloud sql instances describe sismos-pg-test --format=json | jq -r '.ipAddresses[]? | select(.type=="PRIMARY") | .ipAddress' | head -n1)
+            DB_IP=$(gcloud sql instances describe sismos-pg-test --project=${{ env.PROJECT_ID }} --format=json | jq -r '.ipAddresses[]? | select(.type=="PRIMARY") | .ipAddress' | head -n1)
           fi
-          DB_PASS=$(gcloud secrets versions access latest --secret=db-password)
-          echo "Conectando backend a BD en IP: $DB_IP"
+          DB_PASS=$(gcloud secrets versions access latest --secret=db-password --project=${{ env.PROJECT_ID }})
+          echo "Conectando backend a BD en IP: $DB_IP (Proyecto: ${{ env.PROJECT_ID }})"
 
-          
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+            --project="${{ env.PROJECT_ID }}" \
             --image="${{ env.ARTIFACT_REPO }}/backend:${{ github.sha }}" \
             --region="${{ env.REGION }}" \
             --platform=managed \
@@ -138,7 +140,7 @@ jobs:
       - name: Obtener URL pública del Backend
         id: backend_url
         run: |
-          BACKEND_URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --region="${{ env.REGION }}" --format='value(status.url)')
+          BACKEND_URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --project="${{ env.PROJECT_ID }}" --region="${{ env.REGION }}" --format='value(status.url)')
           echo "url=$BACKEND_URL" >> $GITHUB_OUTPUT
           echo "Backend URL: $BACKEND_URL"
 
@@ -163,6 +165,7 @@ jobs:
       - name: Desplegar Frontend en Cloud Run
         run: |
           gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
+            --project="${{ env.PROJECT_ID }}" \
             --image="${{ env.ARTIFACT_REPO }}/frontend:${{ github.sha }}" \
             --region="${{ env.REGION }}" \
             --platform=managed \
@@ -184,10 +187,10 @@ jobs:
           fi
           
           BACKEND_URL="${{ steps.backend_url.outputs.url }}"
-          FRONTEND_URL=$(gcloud run services describe ${{ env.FRONTEND_SERVICE }} --region="${{ env.REGION }}" --format='value(status.url)')
+          FRONTEND_URL=$(gcloud run services describe ${{ env.FRONTEND_SERVICE }} --project="${{ env.PROJECT_ID }}" --region="${{ env.REGION }}" --format='value(status.url)')
           
           echo "### 🚀 Despliegue en Google Cloud Run Completado ($ENV_LABEL)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Entorno:** \`$ENV_LABEL\` (Rama: \`$BRANCH\`)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Entorno:** \`$ENV_LABEL\` (Proyecto: \`${{ env.PROJECT_ID }}\`, Rama: \`$BRANCH\`)" >> $GITHUB_STEP_SUMMARY
           echo "- **Frontend Web (MapLibre GL / Angular 18):** $FRONTEND_URL" >> $GITHUB_STEP_SUMMARY
           echo "- **Backend API REST / WebSockets:** $BACKEND_URL" >> $GITHUB_STEP_SUMMARY
           echo "- **Base de Datos:** Cloud SQL PostgreSQL 16 con PostGIS (Direct VPC Egress)" >> $GITHUB_STEP_SUMMARY
