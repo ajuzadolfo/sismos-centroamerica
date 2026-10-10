@@ -16,6 +16,60 @@ import { SeismographHudComponent } from './seismograph-hud.component';
 import { environment } from '../../../environments/environment';
 import { GeoJsonFeature } from '../../models/earthquake.model';
 
+const VOLCANOES_DATA = {
+  type: 'FeatureCollection' as const,
+  features: [
+    { type: 'Feature' as const, properties: { name: 'Volcán Tajumulco (4,220 m)' }, geometry: { type: 'Point' as const, coordinates: [-91.903, 15.044] } },
+    { type: 'Feature' as const, properties: { name: 'Volcán de Fuego (3,763 m)' }, geometry: { type: 'Point' as const, coordinates: [-90.880, 14.474] } },
+    { type: 'Feature' as const, properties: { name: 'Volcán Pacaya (2,552 m)' }, geometry: { type: 'Point' as const, coordinates: [-90.601, 14.381] } },
+    { type: 'Feature' as const, properties: { name: 'Volcán Santa Ana (2,381 m)' }, geometry: { type: 'Point' as const, coordinates: [-89.630, 13.853] } },
+    { type: 'Feature' as const, properties: { name: 'Volcán San Salvador (1,893 m)' }, geometry: { type: 'Point' as const, coordinates: [-89.283, 13.734] } },
+    { type: 'Feature' as const, properties: { name: 'Volcán San Miguel (2,130 m)' }, geometry: { type: 'Point' as const, coordinates: [-88.271, 13.434] } },
+    { type: 'Feature' as const, properties: { name: 'Volcán Momotombo (1,297 m)' }, geometry: { type: 'Point' as const, coordinates: [-86.540, 12.423] } },
+    { type: 'Feature' as const, properties: { name: 'Volcán Masaya (635 m)' }, geometry: { type: 'Point' as const, coordinates: [-86.161, 11.984] } },
+    { type: 'Feature' as const, properties: { name: 'Volcán Arenal (1,670 m)' }, geometry: { type: 'Point' as const, coordinates: [-84.703, 10.463] } },
+    { type: 'Feature' as const, properties: { name: 'Volcán Irazú (3,432 m)' }, geometry: { type: 'Point' as const, coordinates: [-83.852, 9.979] } },
+    { type: 'Feature' as const, properties: { name: 'Volcán Barú (3,474 m)' }, geometry: { type: 'Point' as const, coordinates: [-82.542, 8.808] } }
+  ]
+};
+
+function buildExtrusionFeature(feature: GeoJsonFeature) {
+  const [lng, lat] = feature.geometry.coordinates;
+  const mag = feature.properties.magnitude;
+  const radius = Math.max(2200, Math.pow(mag, 1.7) * 750); // Metros
+  const height = Math.max(8000, Math.pow(mag, 2.1) * 3200); // Metros de altura visual (50km - 180km)
+
+  const coordinates: number[][][] = [[]];
+  const earthRadius = 6378137;
+  const sides = 8; // Octágono regular para pilar 3D redondeado
+  for (let i = 0; i <= sides; i++) {
+    const angle = (i * 2 * Math.PI) / sides;
+    const dLat = (radius * Math.sin(angle)) / earthRadius;
+    const dLng = (radius * Math.cos(angle)) / (earthRadius * Math.cos((lat * Math.PI) / 180));
+    coordinates[0].push([
+      lng + (dLng * 180) / Math.PI,
+      lat + (dLat * 180) / Math.PI
+    ]);
+  }
+
+  return {
+    type: 'Feature' as const,
+    id: feature.id,
+    properties: {
+      id: feature.id,
+      magnitude: mag,
+      depth: feature.properties.depth,
+      place: feature.properties.place,
+      time: feature.properties.time,
+      pillar_height: height
+    },
+    geometry: {
+      type: 'Polygon' as const,
+      coordinates: coordinates
+    }
+  };
+}
+
 function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
   return {
     width: size,
@@ -79,9 +133,9 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
     <div class="map-wrapper">
       <div #mapContainer class="map-container"></div>
 
-      <!-- Barra Flotante de Modos de Cámara y Presets 3D -->
+      <!-- Barra Flotante de Modos de Cámara y Presets 3D Avanzados -->
       <div class="camera-bar glass-panel">
-        <span class="camera-title">VISTA CÁMARA</span>
+        <span class="camera-title">CENTRO 3D</span>
         <div class="preset-buttons">
           <button
             class="preset-btn"
@@ -94,36 +148,45 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
             class="preset-btn"
             [class.active]="activePreset() === 'trinchera'"
             (click)="setCameraPreset('trinchera')"
-            title="Perspectiva 3D inclinada sobre la Fosa Mesoamericana">
+            title="Perspectiva 3D con relieve sobre la Fosa Mesoamericana">
             🌋 Fosa 3D
           </button>
           <button
             class="preset-btn"
             [class.active]="activePreset() === 'norte'"
             (click)="setCameraPreset('norte')"
-            title="Enfocar Guatemala y El Salvador">
+            title="Enfocar relieve de Guatemala y El Salvador">
             🇬🇹 Norte
           </button>
           <button
             class="preset-btn"
             [class.active]="activePreset() === 'sur'"
             (click)="setCameraPreset('sur')"
-            title="Enfocar Costa Rica y Panamá">
+            title="Enfocar relieve de Costa Rica y Panamá">
             🇨🇷 Sur
           </button>
         </div>
 
         <button
+          class="orbit-btn"
+          [class.active]="isOrbitActive()"
+          (click)="toggleOrbitTour()"
+          title="Iniciar o detener recorrido orbital 360° en 3D">
+          <span class="orbit-icon">🔄</span>
+          <span>{{ isOrbitActive() ? 'ÓRBITA ON' : 'ÓRBITA' }}</span>
+        </button>
+
+        <button
           class="tilt-toggle-btn"
           [class.active]="is3DMode()"
           (click)="toggle3DMode()"
-          title="Alternar inclinación y perspectiva 2.5D del terreno">
+          title="Alternar inclinación y perspectiva 3D del terreno">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
             <polyline points="2 17 12 22 22 17"></polyline>
             <polyline points="2 12 12 17 22 12"></polyline>
           </svg>
-          <span>{{ is3DMode() ? '3D ACTIVO' : '2D PLANO' }}</span>
+          <span>{{ is3DMode() ? '3D TERRENO' : '2D PLANO' }}</span>
         </button>
       </div>
 
@@ -138,19 +201,20 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
       @if (earthquakeService.loading()) {
         <div class="loading-overlay glass-panel">
           <div class="spinner"></div>
-          <span>Sincronizando catálogo sísmico...</span>
+          <span>Sincronizando catálogo y relieve 3D...</span>
         </div>
       }
 
-      <!-- Leyenda de Magnitud -->
+      <!-- Leyenda de Magnitud y Columnas 3D -->
       <div class="legend-panel glass-panel">
-        <div class="legend-title">MAGNITUD (Mw)</div>
+        <div class="legend-title">MAGNITUD &amp; PILARES 3D</div>
         <div class="legend-items">
           <div class="legend-item"><span class="dot mag-low"></span> &lt; 3.5 Menor</div>
           <div class="legend-item"><span class="dot mag-med"></span> 3.5 - 4.4 Moderado</div>
           <div class="legend-item"><span class="dot mag-high"></span> 4.5 - 5.9 Fuerte</div>
           <div class="legend-item"><span class="dot mag-major"></span> &ge; 6.0 Mayor</div>
         </div>
+        <div class="legend-tip">Altura pilar = Energía sísmica</div>
       </div>
     </div>
   `,
@@ -174,14 +238,14 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
       transform: translateX(-50%);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       padding: 6px 14px;
       z-index: 50;
       border-radius: 30px;
-      background: rgba(8, 14, 26, 0.82);
+      background: rgba(8, 14, 26, 0.88);
       backdrop-filter: blur(16px);
-      border: 1px solid rgba(0, 240, 255, 0.22);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.28);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 18px rgba(0, 240, 255, 0.15);
       transition: all 0.3s ease;
     }
 
@@ -224,6 +288,44 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
       border-color: rgba(0, 240, 255, 0.5);
       color: #00f0ff;
       box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+    }
+
+    .orbit-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 20px;
+      color: #6ee7b7;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: var(--font-sans);
+    }
+
+    .orbit-btn:hover {
+      background: rgba(16, 185, 129, 0.22);
+      color: #ffffff;
+    }
+
+    .orbit-btn.active {
+      background: rgba(16, 185, 129, 0.3);
+      border-color: #10b981;
+      color: #a7f3d0;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
+    }
+
+    .orbit-icon {
+      font-size: 0.75rem;
+      animation: spin-slow 8s linear infinite;
+    }
+
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
     .tilt-toggle-btn {
@@ -291,7 +393,7 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
       padding: 12px 16px;
       z-index: 40;
       font-size: 0.75rem;
-      background: rgba(8, 14, 26, 0.82);
+      background: rgba(8, 14, 26, 0.85);
       backdrop-filter: blur(14px);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
@@ -330,21 +432,34 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
     .dot.mag-high { background: #ff9100; box-shadow: 0 0 6px #ff9100; }
     .dot.mag-major { background: #ff1744; box-shadow: 0 0 8px #ff1744; }
 
+    .legend-tip {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.62rem;
+      color: #94a3b8;
+      font-style: italic;
+    }
+
     @media (max-width: 768px) {
       .camera-bar {
         top: 84px;
         padding: 4px 8px;
-        gap: 6px;
+        gap: 5px;
       }
       .camera-title {
         display: none;
       }
       .preset-btn {
-        padding: 3px 7px;
+        padding: 3px 6px;
+        font-size: 0.65rem;
+      }
+      .orbit-btn {
+        padding: 3px 6px;
         font-size: 0.65rem;
       }
       .tilt-toggle-btn {
-        padding: 3px 8px;
+        padding: 3px 7px;
         font-size: 0.65rem;
       }
     }
@@ -360,14 +475,17 @@ export class MapComponent implements OnInit, OnDestroy {
   private map: Map | null = null;
   private activePopup: Popup | null = null;
 
-  // Estados de Telemetría y Controles de Cámara
+  // Estados de Telemetría y Controles de Cámara 3D
   coordinatesText = signal<string>('13.50° N, 86.50° W');
   pitchText = signal<string>('0° [2D]');
   is3DMode = signal<boolean>(false);
+  isOrbitActive = signal<boolean>(false);
   activePreset = signal<'todo' | 'trinchera' | 'norte' | 'sur'>('todo');
 
+  private orbitAnimationId: number | null = null;
+
   constructor() {
-    // Efecto reactivo con Angular Signals: actualiza la fuente GeoJSON del mapa sin re-renderizar todo
+    // Efecto reactivo con Angular Signals: actualiza sismos y columnas 3D
     effect(() => {
       const data = this.earthquakeService.filteredEarthquakes();
       this.updateMapData(data);
@@ -399,6 +517,7 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.stopOrbitLoop();
     if (this.map) {
       this.map.remove();
     }
@@ -415,17 +534,27 @@ export class MapComponent implements OnInit, OnDestroy {
       center: [-86.5, 13.5], // Centroamérica
       zoom: 5.6,
       minZoom: 3,
-      maxZoom: 16
+      maxZoom: 16,
+      maxPitch: 75
     });
 
-    this.map.addControl(new NavigationControl({ showCompass: true }), 'top-right');
+    this.map.addControl(new NavigationControl({ showCompass: true, visualizePitch: true }), 'top-right');
     this.map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left');
 
     this.map.on('load', () => {
       this.initAnimatedPulseIcons();
+      this.setup3DTerrain();
       this.setupLayers();
       this.loadGeologicalFaults();
+      this.loadVolcanicArc();
       this.earthquakeService.loadRecentEarthquakes().subscribe();
+    });
+
+    // Detener órbita al interactuar manualmente con el mapa
+    this.map.on('dragstart', () => {
+      if (this.isOrbitActive()) {
+        this.toggleOrbitTour();
+      }
     });
 
     // Seguimiento dinámico de coordenadas y perspectiva
@@ -440,13 +569,48 @@ export class MapComponent implements OnInit, OnDestroy {
     const updateCameraState = () => {
       if (!this.map) return;
       const pitch = Math.round(this.map.getPitch());
-      const is3D = pitch > 10;
+      const is3D = pitch > 15;
       this.is3DMode.set(is3D);
       this.pitchText.set(`${pitch}° [${is3D ? '3D' : '2D'}]`);
     };
 
     this.map.on('pitchend', updateCameraState);
     this.map.on('rotateend', updateCameraState);
+  }
+
+  private setup3DTerrain() {
+    if (!this.map) return;
+
+    try {
+      // 1. Fuente Raster-DEM de elevación física global en formato Terrarium
+      this.map.addSource('terrain-dem', {
+        type: 'raster-dem',
+        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        encoding: 'terrarium',
+        maxzoom: 12
+      });
+
+      // 2. Activar relieve físico con exageración para apreciar cordilleras y volcanes en 3D
+      this.map.setTerrain({
+        source: 'terrain-dem',
+        exaggeration: 1.85
+      });
+
+      // 3. Atmósfera de horizonte y cielo cinemático
+      if (typeof (this.map as any).setSky === 'function') {
+        (this.map as any).setSky({
+          'sky-color': '#020617',
+          'sky-horizon-blend': 0.6,
+          'horizon-color': '#00f0ff',
+          'horizon-fog-blend': 0.75,
+          'fog-color': '#080e1a',
+          'fog-ground-blend': 0.5
+        });
+      }
+    } catch (err) {
+      console.warn('3D Terrain setup:', err);
+    }
   }
 
   private initAnimatedPulseIcons() {
@@ -465,7 +629,7 @@ export class MapComponent implements OnInit, OnDestroy {
   private setupLayers() {
     if (!this.map) return;
 
-    // 1. Fuente GeoJSON de sismos con clustering dinámico
+    // 1. Fuente GeoJSON de sismos con clustering
     this.map.addSource('earthquakes', {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] },
@@ -474,7 +638,45 @@ export class MapComponent implements OnInit, OnDestroy {
       clusterRadius: 40
     });
 
-    // 2. Capa de Mapa de Calor (Heatmap)
+    // 2. Fuente para Columnas Holográficas 3D de sismos (fill-extrusion)
+    this.map.addSource('earthquakes-3d-extrusions', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
+    });
+
+    // 3. Capa de Columnas Holográficas 3D extruidas en elevación física
+    this.map.addLayer({
+      id: 'earthquakes-3d-pillars',
+      type: 'fill-extrusion',
+      source: 'earthquakes-3d-extrusions',
+      paint: {
+        'fill-extrusion-color': [
+          'step', ['get', 'magnitude'],
+          'rgba(0, 230, 118, 0.75)',
+          3.5, 'rgba(255, 234, 0, 0.75)',
+          4.5, 'rgba(255, 145, 0, 0.82)',
+          6.0, 'rgba(255, 23, 68, 0.9)'
+        ],
+        'fill-extrusion-height': ['get', 'pillar_height'],
+        'fill-extrusion-base': 0,
+        'fill-extrusion-opacity': 0.85
+      }
+    });
+
+    // 4. Anillo de Resplandor Neón en la Cúspide de las Columnas 3D
+    this.map.addLayer({
+      id: 'earthquakes-3d-pillar-tops',
+      type: 'fill-extrusion',
+      source: 'earthquakes-3d-extrusions',
+      paint: {
+        'fill-extrusion-color': '#ffffff',
+        'fill-extrusion-height': ['get', 'pillar_height'],
+        'fill-extrusion-base': ['-', ['get', 'pillar_height'], 1500],
+        'fill-extrusion-opacity': 0.95
+      }
+    });
+
+    // 5. Capa de Mapa de Calor (Heatmap)
     this.map.addLayer({
       id: 'earthquakes-heat',
       type: 'heatmap',
@@ -508,7 +710,7 @@ export class MapComponent implements OnInit, OnDestroy {
       }
     });
 
-    // 3. ONDAS SÍSMICAS ANIMADAS (P & S shockwave rings para sismos destacados)
+    // 6. ONDAS SÍSMICAS ANIMADAS (P & S shockwave rings)
     this.map.addLayer({
       id: 'pulsing-waves-cyan',
       type: 'symbol',
@@ -535,7 +737,7 @@ export class MapComponent implements OnInit, OnDestroy {
       }
     });
 
-    // 4. Capa de Círculos Agrupados (Clusters)
+    // 7. Capa de Círculos Agrupados (Clusters)
     this.map.addLayer({
       id: 'clusters',
       type: 'circle',
@@ -561,7 +763,7 @@ export class MapComponent implements OnInit, OnDestroy {
       }
     });
 
-    // 5. Conteo numérico dentro del cluster
+    // 8. Conteo numérico dentro del cluster
     this.map.addLayer({
       id: 'cluster-count',
       type: 'symbol',
@@ -577,7 +779,7 @@ export class MapComponent implements OnInit, OnDestroy {
       }
     });
 
-    // 6. Capa de Puntos Individuales (Sismos no agrupados)
+    // 9. Capa de Puntos Individuales en superficie
     this.map.addLayer({
       id: 'unclustered-point',
       type: 'circle',
@@ -604,7 +806,7 @@ export class MapComponent implements OnInit, OnDestroy {
       }
     });
 
-    // 7. Capa de Reportes Ciudadanos Comunitarios ("¿Lo sentiste?")
+    // 10. Capa de Reportes Ciudadanos Comunitarios ("¿Lo sentiste?")
     this.map.addSource('citizen-reports-clusters', {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] }
@@ -676,6 +878,57 @@ export class MapComponent implements OnInit, OnDestroy {
     this.registerMapEvents();
   }
 
+  private loadVolcanicArc() {
+    if (!this.map) return;
+
+    this.map.addSource('volcanic-arc', {
+      type: 'geojson',
+      data: VOLCANOES_DATA
+    });
+
+    this.map.addLayer({
+      id: 'volcanoes-cone-halo',
+      type: 'circle',
+      source: 'volcanic-arc',
+      paint: {
+        'circle-radius': 7,
+        'circle-color': '#ff6d00',
+        'circle-opacity': 0.45,
+        'circle-blur': 0.5
+      }
+    });
+
+    this.map.addLayer({
+      id: 'volcanoes-cone-core',
+      type: 'circle',
+      source: 'volcanic-arc',
+      paint: {
+        'circle-radius': 3.5,
+        'circle-color': '#ffea00',
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': '#ffffff'
+      }
+    });
+
+    this.map.addLayer({
+      id: 'volcanoes-label',
+      type: 'symbol',
+      source: 'volcanic-arc',
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-font': ['Open Sans Bold'],
+        'text-size': 9,
+        'text-offset': [0, 1.2],
+        'text-anchor': 'top'
+      },
+      paint: {
+        'text-color': '#f8fafc',
+        'text-halo-color': '#020617',
+        'text-halo-width': 1.5
+      }
+    });
+  }
+
   private registerMapEvents() {
     if (!this.map) return;
 
@@ -689,6 +942,16 @@ export class MapComponent implements OnInit, OnDestroy {
         const coords = (features[0].geometry as any).coordinates;
         this.map!.easeTo({ center: coords, zoom: zoom });
       });
+    });
+
+    // Clic en columnas 3D de sismos
+    this.map.on('click', 'earthquakes-3d-pillars', (e) => {
+      if (!e.features || e.features.length === 0) return;
+      const feat = e.features[0];
+      const eventId = feat.properties?.['id'];
+      if (eventId) {
+        this.earthquakeService.selectEarthquake(eventId);
+      }
     });
 
     // Clic en sismo individual: abrir popup estilizado
@@ -745,7 +1008,6 @@ export class MapComponent implements OnInit, OnDestroy {
               font-weight: 700;
               font-size: 0.75rem;
               cursor: pointer;
-              transition: transform 0.15s ease;
             ">¿Lo sentiste?</button>
 
             <button id="popup-3d-btn" style="
@@ -783,7 +1045,7 @@ export class MapComponent implements OnInit, OnDestroy {
             this.map!.flyTo({
               center: coords,
               zoom: 8.5,
-              pitch: 58,
+              pitch: 62,
               bearing: -15,
               duration: 1500
             });
@@ -798,6 +1060,8 @@ export class MapComponent implements OnInit, OnDestroy {
     this.map.on('mouseleave', 'clusters', () => this.map!.getCanvas().style.cursor = '');
     this.map.on('mouseenter', 'unclustered-point', () => this.map!.getCanvas().style.cursor = 'pointer');
     this.map.on('mouseleave', 'unclustered-point', () => this.map!.getCanvas().style.cursor = '');
+    this.map.on('mouseenter', 'earthquakes-3d-pillars', () => this.map!.getCanvas().style.cursor = 'pointer');
+    this.map.on('mouseleave', 'earthquakes-3d-pillars', () => this.map!.getCanvas().style.cursor = '');
   }
 
   private loadGeologicalFaults() {
@@ -810,7 +1074,7 @@ export class MapComponent implements OnInit, OnDestroy {
           data: faultsData
         });
 
-        // 1. Resplandor exterior difuso (Outer Glow bioluminiscente)
+        // 1. Resplandor exterior difuso
         this.map.addLayer({
           id: 'faults-outer-glow',
           type: 'line',
@@ -855,6 +1119,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
   setCameraPreset(preset: 'todo' | 'trinchera' | 'norte' | 'sur') {
     if (!this.map) return;
+    this.stopOrbitLoop();
     this.activePreset.set(preset);
 
     switch (preset) {
@@ -871,8 +1136,8 @@ export class MapComponent implements OnInit, OnDestroy {
       case 'trinchera':
         this.map.flyTo({
           center: [-89.6, 12.8],
-          zoom: 6.8,
-          pitch: 58,
+          zoom: 7.0,
+          pitch: 62,
           bearing: 25,
           duration: 2000
         });
@@ -881,9 +1146,9 @@ export class MapComponent implements OnInit, OnDestroy {
       case 'norte':
         this.map.flyTo({
           center: [-89.8, 14.1],
-          zoom: 7.3,
-          pitch: 46,
-          bearing: -12,
+          zoom: 7.5,
+          pitch: 58,
+          bearing: -14,
           duration: 1800
         });
         this.is3DMode.set(true);
@@ -891,9 +1156,9 @@ export class MapComponent implements OnInit, OnDestroy {
       case 'sur':
         this.map.flyTo({
           center: [-83.6, 9.3],
-          zoom: 7.3,
-          pitch: 46,
-          bearing: 16,
+          zoom: 7.5,
+          pitch: 58,
+          bearing: 18,
           duration: 1800
         });
         this.is3DMode.set(true);
@@ -903,23 +1168,74 @@ export class MapComponent implements OnInit, OnDestroy {
 
   toggle3DMode() {
     if (!this.map) return;
+    this.stopOrbitLoop();
     const new3D = !this.is3DMode();
     this.is3DMode.set(new3D);
     this.map.easeTo({
-      pitch: new3D ? 54 : 0,
+      pitch: new3D ? 60 : 0,
       bearing: new3D ? -15 : 0,
       duration: 1400
     });
   }
 
+  toggleOrbitTour() {
+    if (!this.map) return;
+    const active = !this.isOrbitActive();
+    this.isOrbitActive.set(active);
+
+    if (active) {
+      this.is3DMode.set(true);
+      this.map.easeTo({
+        pitch: 62,
+        zoom: Math.max(this.map.getZoom(), 6.6),
+        duration: 1200
+      });
+      this.startOrbitLoop();
+    } else {
+      this.stopOrbitLoop();
+    }
+  }
+
+  private startOrbitLoop() {
+    this.stopOrbitLoop();
+    const rotateStep = () => {
+      if (!this.isOrbitActive() || !this.map) return;
+      this.map.setBearing((this.map.getBearing() + 0.15) % 360);
+      this.orbitAnimationId = requestAnimationFrame(rotateStep);
+    };
+    this.orbitAnimationId = requestAnimationFrame(rotateStep);
+  }
+
+  private stopOrbitLoop() {
+    if (this.orbitAnimationId) {
+      cancelAnimationFrame(this.orbitAnimationId);
+      this.orbitAnimationId = null;
+    }
+    this.isOrbitActive.set(false);
+  }
+
   private updateMapData(features: GeoJsonFeature[]) {
     if (!this.map || !this.map.isStyleLoaded()) return;
 
+    // Actualizar fuente sismos general
     const source = this.map.getSource('earthquakes') as GeoJSONSource;
     if (source) {
       source.setData({
         type: 'FeatureCollection',
         features: features
+      });
+    }
+
+    // Actualizar columnas holográficas 3D
+    const extrusionSource = this.map.getSource('earthquakes-3d-extrusions') as GeoJSONSource;
+    if (extrusionSource) {
+      const extrusionFeatures = features
+        .filter(f => f.properties.magnitude >= 3.0)
+        .map(f => buildExtrusionFeature(f));
+
+      extrusionSource.setData({
+        type: 'FeatureCollection',
+        features: extrusionFeatures
       });
     }
   }
