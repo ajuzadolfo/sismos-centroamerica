@@ -63,7 +63,7 @@ import { EarthquakeService } from '../../services/earthquake.service';
   styles: [`
     .timeline-bar {
       position: absolute;
-      bottom: 24px;
+      bottom: 28px;
       left: 16px;
       right: 16px;
       height: 72px;

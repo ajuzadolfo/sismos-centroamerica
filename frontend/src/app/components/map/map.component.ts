@@ -351,7 +351,7 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
 
     .legend-panel {
       position: absolute;
-      bottom: 110px;
+      bottom: 114px;
       right: 16px;
       padding: 12px 16px;
       z-index: 40;

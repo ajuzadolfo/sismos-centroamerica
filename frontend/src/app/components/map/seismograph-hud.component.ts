@@ -92,7 +92,7 @@ import { AudioAlertService } from '../../services/audio-alert.service';
   styles: [`
     .hud-container {
       position: absolute;
-      bottom: 110px;
+      bottom: 114px;
       left: 16px;
       width: 380px;
       z-index: 40;
