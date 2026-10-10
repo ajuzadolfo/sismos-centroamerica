@@ -1,0 +1,16 @@
+services:
+  postgis:
+    image: postgis/postgis:16-3.4
+    container_name: sismos-postgis-local
+    environment:
+      POSTGRES_DB: sismos_db
+      POSTGRES_USER: sismos_app
+      POSTGRES_PASSWORD: sismos_dev_password_2026
+    ports:
+      - "5433:5432"
+    volumes:
+      - sismos_postgis_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  sismos_postgis_data:

@@ -1,0 +1,154 @@
+name: CI/CD Pipeline - Despliegue en Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # Requerido para Workload Identity Federation (OIDC)
+
+env:
+  PROJECT_ID: sismos-centroamerica-test
+  REGION: us-central1
+  ARTIFACT_REPO: us-central1-docker.pkg.dev/sismos-centroamerica-test/sismos-repo
+  BACKEND_SERVICE: sismos-backend
+  FRONTEND_SERVICE: sismos-frontend
+  VPC_NETWORK: sismos-vpc
+  VPC_SUBNET: cloudrun-subnet
+  CLOUD_SQL_INSTANCE: sismos-centroamerica-test:us-central1:sismos-pg-test
+  WIF_PROVIDER: projects/sismos-centroamerica-test/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+  WIF_SERVICE_ACCOUNT: github-deployer@sismos-centroamerica-test.iam.gserviceaccount.com
+
+jobs:
+  # =====================================================================
+  # JOB 1: Test y Verificación de Calidad
+  # =====================================================================
+  test:
+    name: Pruebas Unitarias (Backend y Frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Ejecutar pruebas unitarias de Spring Boot
+        run: |
+          cd backend
+          mvn test -B
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias y compilar Angular
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+  # =====================================================================
+  # JOB 2: Build, Push y Despliegue Serverless en Cloud Run
+  # =====================================================================
+  deploy:
+    name: Build y Despliegue en Cloud Run
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      # 1. Autenticación OIDC con GCP sin claves JSON permanentes
+      - name: Autenticación en Google Cloud vía WIF
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Configurar Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      # 2. Configurar Docker para Artifact Registry
+      - name: Configurar Docker Auth para Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # 3. Construir y Publicar Imagen del Backend
+      - name: Build y Push Docker - Backend
+        run: |
+          IMAGE_TAG="${{ env.ARTIFACT_REPO }}/backend:${{ github.sha }}"
+          LATEST_TAG="${{ env.ARTIFACT_REPO }}/backend:latest"
+          
+          docker build -t $IMAGE_TAG -t $LATEST_TAG ./backend
+          docker push $IMAGE_TAG
+          docker push $LATEST_TAG
+
+      # 4. Desplegar Backend en Cloud Run con Direct VPC Egress
+      - name: Desplegar Backend en Cloud Run
+        run: |
+          gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+            --image="${{ env.ARTIFACT_REPO }}/backend:${{ github.sha }}" \
+            --region="${{ env.REGION }}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --cpu=1 \
+            --memory=1Gi \
+            --min-instances=1 \
+            --max-instances=3 \
+            --timeout=3600 \
+            --no-cpu-throttling \
+            --network="${{ env.VPC_NETWORK }}" \
+            --subnet="${{ env.VPC_SUBNET }}" \
+            --vpc-egress=private-ranges-only \
+            --add-cloudsql-instances="${{ env.CLOUD_SQL_INSTANCE }}" \
+            --set-env-vars="SPRING_PROFILES_ACTIVE=prod" \
+            --quiet
+
+      # 5. Obtener URL pública del Backend para inyectar en el Frontend
+      - name: Obtener URL pública del Backend
+        id: backend_url
+        run: |
+          BACKEND_URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --region="${{ env.REGION }}" --format='value(status.url)')
+          echo "url=$BACKEND_URL" >> $GITHUB_OUTPUT
+          echo "Backend URL: $BACKEND_URL"
+
+      # 6. Construir y Publicar Imagen del Frontend (SPA)
+      - name: Build y Push Docker - Frontend
+        run: |
+          IMAGE_TAG="${{ env.ARTIFACT_REPO }}/frontend:${{ github.sha }}"
+          LATEST_TAG="${{ env.ARTIFACT_REPO }}/frontend:latest"
+          
+          docker build -t $IMAGE_TAG -t $LATEST_TAG ./frontend
+          docker push $IMAGE_TAG
+          docker push $LATEST_TAG
+
+      # 7. Desplegar Frontend en Cloud Run
+      - name: Desplegar Frontend en Cloud Run
+        run: |
+          gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
+            --image="${{ env.ARTIFACT_REPO }}/frontend:${{ github.sha }}" \
+            --region="${{ env.REGION }}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --cpu=1 \
+            --memory=512Mi \
+            --min-instances=1 \
+            --max-instances=3 \
+            --quiet
