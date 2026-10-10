@@ -5,6 +5,7 @@ import { MapComponent } from '../map/map.component';
 import { TimelineComponent } from '../timeline/timeline.component';
 import { DetailPanelComponent } from '../detail-panel/detail-panel.component';
 import { FiltersComponent } from '../filters/filters.component';
+import { AnalyticsModalComponent } from '../analytics/analytics-modal.component';
 import { WebSocketService } from '../../services/websocket.service';
 
 @Component({
@@ -16,17 +17,25 @@ import { WebSocketService } from '../../services/websocket.service';
     MapComponent,
     TimelineComponent,
     DetailPanelComponent,
-    FiltersComponent
+    FiltersComponent,
+    AnalyticsModalComponent
   ],
   template: `
     <div class="monitor-container">
-      <app-header (toggleFilterDrawer)="isFilterOpen.set(!isFilterOpen())" />
+      <app-header 
+        (toggleFilterDrawer)="isFilterOpen.set(!isFilterOpen())"
+        (openAnalytics)="isAnalyticsOpen.set(true)" 
+      />
       <app-map />
       <app-timeline />
       <app-detail-panel />
 
       @if (isFilterOpen()) {
         <app-filters (close)="isFilterOpen.set(false)" />
+      }
+
+      @if (isAnalyticsOpen()) {
+        <app-analytics-modal (close)="isAnalyticsOpen.set(false)" />
       }
 
       <footer class="monitor-footer">
@@ -84,6 +93,7 @@ import { WebSocketService } from '../../services/websocket.service';
 export class MonitorComponent implements OnInit, OnDestroy {
   private wsService = inject(WebSocketService);
   isFilterOpen = signal<boolean>(false);
+  isAnalyticsOpen = signal<boolean>(false);
 
   ngOnInit() {
     this.wsService.connect();
