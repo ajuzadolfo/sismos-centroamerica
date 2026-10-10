@@ -171,7 +171,9 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   private initMap() {
-    setWorkerUrl('/maplibre-gl-worker.mjs');
+    if (typeof window !== 'undefined') {
+      setWorkerUrl(`${window.location.origin}/maplibre-gl-worker.mjs`);
+    }
 
     this.map = new Map({
       container: this.mapContainer.nativeElement,
