@@ -1,15 +1,16 @@
 import { Component, EventEmitter, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { EarthquakeService } from '../../services/earthquake.service';
 import { WebSocketService } from '../../services/websocket.service';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   template: `
     <header class="header glass-panel">
-      <div class="logo-group">
+      <a routerLink="/" class="logo-group" title="Volver a la portada interactiva">
         <div class="pulse-indicator" [class.connected]="wsService.isConnected()">
           <span class="dot"></span>
         </div>
@@ -17,7 +18,7 @@ import { WebSocketService } from '../../services/websocket.service';
           <h1>SISMOS CENTROAMÉRICA</h1>
           <span class="subtitle">MONITOR SÍSMICO EN TIEMPO REAL</span>
         </div>
-      </div>
+      </a>
 
       <div class="metrics-group">
         <div class="metric-chip">
@@ -36,6 +37,14 @@ import { WebSocketService } from '../../services/websocket.service';
       </div>
 
       <div class="actions-group">
+        <a routerLink="/" class="btn-toggle" title="Ver presentación interactiva">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span>Inicio</span>
+        </a>
+
         <button
           class="btn-toggle"
           [class.active]="earthquakeService.isHeatmapActive()"
@@ -77,6 +86,8 @@ import { WebSocketService } from '../../services/websocket.service';
       display: flex;
       align-items: center;
       gap: 14px;
+      text-decoration: none;
+      cursor: pointer;
     }
 
     .pulse-indicator {

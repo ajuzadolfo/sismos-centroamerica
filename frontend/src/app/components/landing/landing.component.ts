@@ -1,0 +1,886 @@
+import { Component, ElementRef, HostListener, ViewChild, signal, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+
+interface StoryScene {
+  id: number;
+  badge: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  metricLabel: string;
+  metricValue: string;
+  accentColor: string;
+}
+
+@Component({
+  selector: 'app-landing',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  template: `
+    <div class="landing-page" #scrollContainer>
+      <!-- Top Fixed Brand Navigation -->
+      <header class="landing-nav glass-nav">
+        <div class="brand">
+          <div class="pulse-beacon">
+            <span class="core"></span>
+            <span class="aura"></span>
+          </div>
+          <div class="brand-text">
+            <span class="company">FOZNA SOLUTIONS</span>
+            <span class="product">MONITOR SÍSMICO CENTROAMÉRICA</span>
+          </div>
+        </div>
+
+        <nav class="nav-actions">
+          <a routerLink="/monitor" class="btn-primary-glow">
+            <span>Acceder al Monitor en Vivo</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+        </nav>
+      </header>
+
+      <!-- Fixed Cinema Stage (Canvas / Video / Visual Background) -->
+      <div class="cinema-stage">
+        <div class="backdrop-gradient"></div>
+        <div class="tectonic-mesh" [style.transform]="cameraTransform()"></div>
+
+        <!-- Visual Scene Representation -->
+        <div class="visual-viewport" [ngClass]="'scene-' + activeSceneIndex()">
+          <div class="scene-ambient" [style.background]="activeScene().accentColor"></div>
+          
+          <div class="hologram-diorama">
+            @switch (activeSceneIndex()) {
+              @case (0) {
+                <!-- Escena 1: Orbita Espacial -->
+                <div class="diorama-element space-orbit">
+                  <div class="globe-silhouette"></div>
+                  <div class="orbit-sat"></div>
+                  <div class="ridge-glow"></div>
+                </div>
+              }
+              @case (1) {
+                <!-- Escena 2: Falla Tectonica Cocos -->
+                <div class="diorama-element trench-fault">
+                  <div class="tectonic-plate cocos"></div>
+                  <div class="tectonic-plate caribbean"></div>
+                  <div class="magma-core"></div>
+                  <div class="shockwaves"></div>
+                </div>
+              }
+              @case (2) {
+                <!-- Escena 3: Observatorio de Superficie -->
+                <div class="diorama-element observatory-surface">
+                  <div class="volcano-cone"></div>
+                  <div class="station-dome"></div>
+                  <div class="seismograph-trace"></div>
+                </div>
+              }
+              @case (3) {
+                <!-- Escena 4: Google Cloud Serverless -->
+                <div class="diorama-element cloud-network">
+                  <div class="cloud-nodes">
+                    <span class="node n1"></span>
+                    <span class="node n2"></span>
+                    <span class="node n3"></span>
+                    <span class="node n4"></span>
+                  </div>
+                  <div class="data-stream"></div>
+                </div>
+              }
+              @case (4) {
+                <!-- Escena 5: Dispositivo y Comunidad -->
+                <div class="diorama-element citizen-hero">
+                  <div class="phone-frame">
+                    <div class="phone-screen">
+                      <div class="mini-map"></div>
+                      <div class="pulse-epicenter"></div>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+        <div class="vignette-overlay"></div>
+      </div>
+
+      <!-- Lateral Scene HUD Indicator -->
+      <aside class="scene-hud">
+        <div class="hud-track">
+          <div class="hud-fill" [style.height.%]="scrollProgress() * 100"></div>
+          @for (scene of scenes; track scene.id; let idx = $index) {
+            <button
+              class="hud-dot"
+              [class.active]="activeSceneIndex() === idx"
+              (click)="scrollToScene(idx)"
+              [title]="scene.title">
+              <span class="dot-number">0{{ idx + 1 }}</span>
+              <span class="dot-label">{{ scene.badge }}</span>
+            </button>
+          }
+        </div>
+      </aside>
+
+      <!-- Scroll Scrubbing Content Track (500vh container) -->
+      <div class="scroll-track">
+        @for (scene of scenes; track scene.id; let idx = $index) {
+          <section class="scene-section" [id]="'scene-' + idx">
+            <div class="scene-card glass-card" [class.visible]="activeSceneIndex() === idx">
+              <div class="badge-pill" [style.color]="scene.accentColor" [style.borderColor]="scene.accentColor">
+                <span class="badge-dot" [style.background]="scene.accentColor"></span>
+                {{ scene.badge }}
+              </div>
+
+              <h2 class="scene-title">{{ scene.title }}</h2>
+              <p class="scene-subtitle">{{ scene.subtitle }}</p>
+              <p class="scene-desc">{{ scene.description }}</p>
+
+              <div class="scene-metric">
+                <span class="m-val">{{ scene.metricValue }}</span>
+                <span class="m-lbl">{{ scene.metricLabel }}</span>
+              </div>
+
+              @if (idx === 4) {
+                <div class="cta-group">
+                  <a routerLink="/monitor" class="btn-cta-main">
+                    <span>Abrir Monitor en Vivo</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </a>
+                  <a href="https://github.com/ajuzadolfo/sismos-centroamerica" target="_blank" rel="noopener" class="btn-cta-secondary">
+                    <span>Código en GitHub</span>
+                  </a>
+                </div>
+              }
+            </div>
+          </section>
+        }
+      </div>
+
+      <!-- Bottom Status & Skip Bar -->
+      <footer class="landing-footer glass-footer">
+        <div class="scroll-hint" [class.fade-out]="scrollProgress() > 0.85">
+          <span class="mouse-icon">
+            <span class="wheel"></span>
+          </span>
+          <span class="hint-text">Desplaza hacia abajo para navegar por el mundo</span>
+        </div>
+
+        <div class="direct-link">
+          <a routerLink="/monitor" class="skip-btn">
+            Saltar animación e ir directamente al Mapa &rarr;
+          </a>
+        </div>
+      </footer>
+    </div>
+  `,
+  styles: [`
+    :host {
+      display: block;
+      width: 100vw;
+      min-height: 100vh;
+      background: #060911;
+      color: #f1f5f9;
+      font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      overflow-x: hidden;
+    }
+
+    .landing-page {
+      position: relative;
+      width: 100%;
+    }
+
+    /* Top Navigation */
+    .landing-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+      background: rgba(6, 9, 17, 0.7);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .pulse-beacon {
+      position: relative;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pulse-beacon .core {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00e5ff;
+      box-shadow: 0 0 12px #00e5ff;
+    }
+
+    .pulse-beacon .aura {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(0, 229, 255, 0.4);
+      animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.6); opacity: 0.9; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+
+    .brand-text .company {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #ffffff;
+    }
+
+    .brand-text .product {
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: #00e5ff;
+    }
+
+    .btn-primary-glow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(0, 150, 255, 0.2));
+      border: 1px solid #00e5ff;
+      color: #ffffff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 16px rgba(0, 229, 255, 0.2);
+    }
+
+    .btn-primary-glow:hover {
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.35), rgba(0, 150, 255, 0.35));
+      box-shadow: 0 0 24px rgba(0, 229, 255, 0.45);
+      transform: translateY(-1px);
+    }
+
+    /* Fixed Cinema Stage */
+    .cinema-stage {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      pointer-events: none;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #0a1122 0%, #03050a 100%);
+    }
+
+    .backdrop-gradient {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 60% 40%, rgba(0, 229, 255, 0.08) 0%, transparent 60%);
+    }
+
+    .tectonic-mesh {
+      position: absolute;
+      inset: -20%;
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      transform-origin: center center;
+      transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
+    }
+
+    .visual-viewport {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .scene-ambient {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      filter: blur(140px);
+      opacity: 0.18;
+      transition: background 1s ease;
+    }
+
+    .hologram-diorama {
+      position: relative;
+      width: 500px;
+      height: 500px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Diorama Visual Stubs */
+    .diorama-element {
+      position: relative;
+      width: 320px;
+      height: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: float-gentle 6s ease-in-out infinite;
+    }
+
+    @keyframes float-gentle {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-10px) rotate(1deg); }
+    }
+
+    /* Scene 1: Orbit */
+    .globe-silhouette {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #0f2537 0%, #030811 80%);
+      box-shadow: 0 0 50px rgba(0, 229, 255, 0.25), inset -20px -20px 40px rgba(0, 0, 0, 0.8);
+      border: 1px solid rgba(0, 229, 255, 0.2);
+    }
+
+    .orbit-sat {
+      position: absolute;
+      top: 30px;
+      right: 30px;
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      background: #00e5ff;
+      box-shadow: 0 0 15px #00e5ff;
+      animation: orbit-fly 10s linear infinite;
+    }
+
+    @keyframes orbit-fly {
+      0% { transform: rotate(0deg) translateX(120px) rotate(0deg); }
+      100% { transform: rotate(360deg) translateX(120px) rotate(-360deg); }
+    }
+
+    /* Scene 2: Trench Fault */
+    .trench-fault {
+      position: relative;
+    }
+    .tectonic-plate.cocos {
+      position: absolute;
+      width: 180px;
+      height: 60px;
+      background: #17202a;
+      transform: rotate(25deg) translate(-40px, -20px);
+      border-top: 2px solid #ff9100;
+      border-radius: 4px;
+    }
+    .tectonic-plate.caribbean {
+      position: absolute;
+      width: 180px;
+      height: 60px;
+      background: #10171e;
+      transform: rotate(-10deg) translate(40px, 30px);
+      border-top: 2px solid #ff3d00;
+      border-radius: 4px;
+    }
+    .magma-core {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #ff3d00;
+      filter: blur(20px);
+      box-shadow: 0 0 40px #ff3d00;
+    }
+
+    /* Scene 3: Observatory */
+    .volcano-cone {
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-left: 100px solid transparent;
+      border-right: 100px solid transparent;
+      border-bottom: 140px solid #1a2332;
+      border-radius: 8px;
+    }
+    .station-dome {
+      position: absolute;
+      top: 90px;
+      width: 32px;
+      height: 20px;
+      border-radius: 16px 16px 0 0;
+      background: #ffffff;
+      box-shadow: 0 0 20px #00e5ff;
+    }
+
+    /* Scene 4: Cloud */
+    .cloud-nodes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+    .cloud-nodes .node {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: rgba(0, 229, 255, 0.1);
+      border: 1.5px solid #00e5ff;
+      box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
+      animation: pulse-node 2s infinite alternate;
+    }
+    @keyframes pulse-node {
+      0% { transform: scale(0.95); opacity: 0.7; }
+      100% { transform: scale(1.05); opacity: 1; }
+    }
+
+    /* Scene 5: Citizen Phone */
+    .phone-frame {
+      width: 160px;
+      height: 280px;
+      border-radius: 28px;
+      background: #000000;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 229, 255, 0.25);
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      border-radius: 18px;
+      background: #090e17;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pulse-epicenter {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #ff1744;
+      box-shadow: 0 0 20px #ff1744;
+      animation: ripple 1.5s infinite;
+    }
+    @keyframes ripple {
+      0% { transform: scale(0.5); opacity: 1; }
+      100% { transform: scale(2.5); opacity: 0; }
+    }
+
+    .vignette-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 40%, rgba(3, 5, 10, 0.75) 100%);
+    }
+
+    /* Lateral Scene HUD */
+    .scene-hud {
+      position: fixed;
+      left: 32px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 50;
+    }
+
+    .hud-track {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      padding-left: 14px;
+      border-left: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .hud-fill {
+      position: absolute;
+      left: -2px;
+      top: 0;
+      width: 2px;
+      background: #00e5ff;
+      box-shadow: 0 0 8px #00e5ff;
+      transition: height 0.1s linear;
+    }
+
+    .hud-dot {
+      background: none;
+      border: none;
+      padding: 0;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      opacity: 0.4;
+      transition: all 0.3s ease;
+    }
+
+    .hud-dot:hover, .hud-dot.active {
+      opacity: 1;
+      transform: translateX(4px);
+    }
+
+    .dot-number {
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: #00e5ff;
+      font-family: monospace;
+    }
+
+    .dot-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #ffffff;
+      text-transform: uppercase;
+    }
+
+    /* Scroll Track & Sections */
+    .scroll-track {
+      position: relative;
+      z-index: 10;
+    }
+
+    .scene-section {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 8vw;
+      box-sizing: border-box;
+    }
+
+    .scene-card {
+      max-width: 540px;
+      padding: 36px 40px;
+      border-radius: 20px;
+      background: rgba(10, 16, 29, 0.75);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .scene-card.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .scene-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1.15;
+      margin: 0 0 10px 0;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+    }
+
+    .scene-subtitle {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #94a3b8;
+      margin: 0 0 16px 0;
+      line-height: 1.4;
+    }
+
+    .scene-desc {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: #cbd5e1;
+      margin: 0 0 24px 0;
+    }
+
+    .scene-metric {
+      padding: 14px 20px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .scene-metric .m-val {
+      font-family: monospace;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #00e5ff;
+    }
+
+    .scene-metric .m-lbl {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .cta-group {
+      margin-top: 24px;
+      display: flex;
+      gap: 14px;
+    }
+
+    .btn-cta-main {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 24px;
+      border-radius: 12px;
+      background: #00e5ff;
+      color: #050b14;
+      font-weight: 800;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: all 0.25s ease;
+      box-shadow: 0 0 24px rgba(0, 229, 255, 0.4);
+    }
+
+    .btn-cta-main:hover {
+      background: #ffffff;
+      transform: translateY(-2px);
+      box-shadow: 0 0 32px rgba(0, 229, 255, 0.6);
+    }
+
+    .btn-cta-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 20px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: all 0.25s ease;
+    }
+
+    .btn-cta-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Bottom Bar */
+    .landing-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 50;
+      background: linear-gradient(to top, rgba(6, 9, 17, 0.8), transparent);
+    }
+
+    .scroll-hint {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      font-weight: 600;
+      transition: opacity 0.3s ease;
+    }
+
+    .scroll-hint.fade-out {
+      opacity: 0;
+    }
+
+    .mouse-icon {
+      width: 14px;
+      height: 22px;
+      border-radius: 10px;
+      border: 1.5px solid #94a3b8;
+      position: relative;
+    }
+
+    .mouse-icon .wheel {
+      position: absolute;
+      top: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 5px;
+      background: #00e5ff;
+      border-radius: 1px;
+      animation: wheel-scroll 1.5s infinite;
+    }
+
+    @keyframes wheel-scroll {
+      0% { top: 3px; opacity: 1; }
+      100% { top: 12px; opacity: 0; }
+    }
+
+    .skip-btn {
+      color: #94a3b8;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .skip-btn:hover {
+      color: #00e5ff;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .scene-section {
+        justify-content: center;
+        padding: 0 20px;
+      }
+      .scene-hud {
+        display: none;
+      }
+      .scene-title {
+        font-size: 1.6rem;
+      }
+      .scene-card {
+        padding: 24px;
+      }
+    }
+  `]
+})
+export class LandingComponent {
+  scrollProgress = signal<number>(0);
+
+  scenes: StoryScene[] = [
+    {
+      id: 1,
+      badge: 'MONITORIZACIÓN CONTINUA',
+      title: 'Centroamérica en Movimiento',
+      subtitle: 'Una de las regiones sísmicamente más dinámicas del planeta',
+      description: 'Supervisión constante de la interacción entre la placa de Cocos y la placa del Caribe a lo largo del istmo centroamericano.',
+      metricValue: '6 Países',
+      metricLabel: 'Supervisión regional unificada',
+      accentColor: '#00e5ff'
+    },
+    {
+      id: 2,
+      badge: 'DETECCIÓN PROFUNDA',
+      title: 'Falla Tectónica y Subducción',
+      subtitle: 'Cuando la tierra cruje, cada segundo cuenta',
+      description: 'Ingesta automatizada de eventos telúricos desde los feeds geofísicos del USGS y redes FDSN en menos de 60 segundos.',
+      metricValue: '< 60s',
+      metricLabel: 'Tiempo de detección e ingesta',
+      accentColor: '#ff9100'
+    },
+    {
+      id: 3,
+      badge: 'PRECISIÓN POSTGIS',
+      title: 'Observatorio en Superficie',
+      subtitle: 'Matemática espacial en milisegundos',
+      description: 'Cálculos de proximidad geodésica esferoidal, hipocentro y magnitud acelerados mediante PostgreSQL 16 y PostGIS 3.4.',
+      metricValue: '< 50ms',
+      metricLabel: 'Latencia p95 de consulta espacial',
+      accentColor: '#00e676'
+    },
+    {
+      id: 4,
+      badge: 'ARQUITECTURA SERVERLESS',
+      title: 'La Nube Distribuida',
+      subtitle: 'Streaming sin fricción a escala regional',
+      description: 'Arquitectura en Google Cloud Run con Direct VPC Egress, WebSockets STOMP bidireccionales y coordinación distribuida ShedLock.',
+      metricValue: '99.9%',
+      metricLabel: 'Disponibilidad multi-zona',
+      accentColor: '#38bdf8'
+    },
+    {
+      id: 5,
+      badge: 'SISMOLOGÍA CIUDADANA',
+      title: 'Tú también eres el Sensor',
+      subtitle: 'Reporta en 3 clics y mapea la intensidad',
+      description: 'Validación geométrica de reportes comunitarios "¿Lo sentiste?" con agregación en tiempo real para proteger a la población.',
+      metricValue: '100% En Vivo',
+      metricLabel: 'WebSockets y mapa vectorial interactivo',
+      accentColor: '#ff1744'
+    }
+  ];
+
+  activeSceneIndex = computed(() => {
+    const p = this.scrollProgress();
+    const count = this.scenes.length;
+    const index = Math.min(Math.floor(p * count), count - 1);
+    return Math.max(0, index);
+  });
+
+  activeScene = computed(() => this.scenes[this.activeSceneIndex()]);
+
+  cameraTransform = computed(() => {
+    const p = this.scrollProgress();
+    const scale = 1 + p * 0.4;
+    const rotate = p * 15;
+    const translateY = p * -80;
+    return `scale(${scale}) rotate(${rotate}deg) translateY(${translateY}px)`;
+  });
+
+  @HostListener('window:scroll')
+  onScroll() {
+    const scrollY = window.scrollY;
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = maxScroll > 0 ? Math.min(Math.max(scrollY / maxScroll, 0), 1) : 0;
+    this.scrollProgress.set(progress);
+  }
+
+  scrollToScene(index: number) {
+    const targetY = (document.documentElement.scrollHeight - window.innerHeight) * (index / (this.scenes.length - 1));
+    window.scrollTo({ top: targetY, behavior: 'smooth' });
+  }
+}
