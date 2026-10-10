@@ -20,7 +20,7 @@ env:
   VPC_NETWORK: sismos-vpc
   VPC_SUBNET: cloudrun-subnet
   CLOUD_SQL_INSTANCE: sismos-centroamerica-test:us-central1:sismos-pg-test
-  WIF_PROVIDER: projects/sismos-centroamerica-test/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+  WIF_PROVIDER: projects/1092009103926/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
   WIF_SERVICE_ACCOUNT: github-deployer@sismos-centroamerica-test.iam.gserviceaccount.com
 
 jobs:
@@ -98,9 +98,15 @@ jobs:
           docker push $IMAGE_TAG
           docker push $LATEST_TAG
 
-      # 4. Desplegar Backend en Cloud Run con Direct VPC Egress
-      - name: Desplegar Backend en Cloud Run
+      # 4. Obtener IP privada de Cloud SQL y Desplegar Backend en Cloud Run
+      - name: Desplegar Backend en Cloud Run con Direct VPC Egress
         run: |
+          DB_IP=$(gcloud sql instances describe sismos-pg-test --format='value(ipAddresses[1].ipAddress)')
+          if [ -z "$DB_IP" ]; then
+            DB_IP=$(gcloud sql instances describe sismos-pg-test --format='value(ipAddresses[0].ipAddress)')
+          fi
+          DB_PASS=$(gcloud secrets versions access latest --secret=db-password)
+          
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
             --image="${{ env.ARTIFACT_REPO }}/backend:${{ github.sha }}" \
             --region="${{ env.REGION }}" \
@@ -116,11 +122,10 @@ jobs:
             --network="${{ env.VPC_NETWORK }}" \
             --subnet="${{ env.VPC_SUBNET }}" \
             --vpc-egress=private-ranges-only \
-            --add-cloudsql-instances="${{ env.CLOUD_SQL_INSTANCE }}" \
-            --set-env-vars="SPRING_PROFILES_ACTIVE=prod" \
+            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_IP}:5432/sismos_db,SPRING_DATASOURCE_USERNAME=sismos_app,SPRING_DATASOURCE_PASSWORD=${DB_PASS}" \
             --quiet
 
-      # 5. Obtener URL pública del Backend para inyectar en el Frontend
+      # 5. Obtener URL pública del Backend
       - name: Obtener URL pública del Backend
         id: backend_url
         run: |
@@ -128,9 +133,16 @@ jobs:
           echo "url=$BACKEND_URL" >> $GITHUB_OUTPUT
           echo "Backend URL: $BACKEND_URL"
 
-      # 6. Construir y Publicar Imagen del Frontend (SPA)
+      # 6. Configurar Endpoints del Backend y Construir Imagen del Frontend
       - name: Build y Push Docker - Frontend
         run: |
+          BACKEND_URL="${{ steps.backend_url.outputs.url }}"
+          WS_URL=$(echo "$BACKEND_URL" | sed 's|^https|wss|; s|^http|ws|')
+          
+          echo "Configurando Frontend para conectar a: $BACKEND_URL"
+          sed -i "s|http://localhost:8080/api/v1|${BACKEND_URL}/api/v1|g" frontend/src/environments/environment.ts
+          sed -i "s|http://localhost:8080/ws/seismic|${WS_URL}/ws/seismic|g" frontend/src/environments/environment.ts
+          
           IMAGE_TAG="${{ env.ARTIFACT_REPO }}/frontend:${{ github.sha }}"
           LATEST_TAG="${{ env.ARTIFACT_REPO }}/frontend:latest"
           
@@ -152,3 +164,15 @@ jobs:
             --min-instances=1 \
             --max-instances=3 \
             --quiet
+
+      # 8. Resumen de Despliegue con URLs Públicas
+      - name: Publicar URLs en GitHub Summary
+        run: |
+          BACKEND_URL="${{ steps.backend_url.outputs.url }}"
+          FRONTEND_URL=$(gcloud run services describe ${{ env.FRONTEND_SERVICE }} --region="${{ env.REGION }}" --format='value(status.url)')
+          
+          echo "### 🚀 Despliegue en Google Cloud Run Completado con Éxito" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend Web (MapLibre GL / Angular 18):** $FRONTEND_URL" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend API REST / WebSockets:** $BACKEND_URL" >> $GITHUB_STEP_SUMMARY
+          echo "- **Base de Datos:** Cloud SQL PostgreSQL 16 con PostGIS (Direct VPC Egress)" >> $GITHUB_STEP_SUMMARY
+

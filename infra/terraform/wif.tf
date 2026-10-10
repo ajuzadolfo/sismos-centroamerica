@@ -46,7 +46,9 @@ locals {
   deployer_roles = [
     "roles/run.admin",
     "roles/artifactregistry.writer",
-    "roles/iam.serviceAccountUser"
+    "roles/iam.serviceAccountUser",
+    "roles/secretmanager.secretAccessor",
+    "roles/cloudsql.client"
   ]
 }
 
