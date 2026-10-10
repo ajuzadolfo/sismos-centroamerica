@@ -54,7 +54,7 @@ El presente plan define la hoja de ruta de implementación técnica y operativa 
 │ Fase 4     │ Streaming Distribuido (WebSockets/STOMP) (COMPLETADA)     │
 │ Fase 5     │ Frontend Angular (Signals), MapLibre GL JS (COMPLETADA)   │
 │ Fase 6     │ Sismología Ciudadana y Validación Espacial (COMPLETADA)   │
-│ Fase 7     │ CI/CD en GitHub Actions y Despliegue Cloud Run Optimizado  │
+│ Fase 7     │ CI/CD en GitHub Actions y Despliegue Cloud Run (COMPLETADA│
 │ Fase 8     │ Pruebas de Carga Multi-Instancia y Criterios de Éxito     │
 └────────────┴───────────────────────────────────────────────────────────┘
 ```
