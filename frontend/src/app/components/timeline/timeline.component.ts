@@ -64,7 +64,7 @@ import { TranslationService } from '../../services/translation.service';
   styles: [`
     .timeline-bar {
       position: absolute;
-      bottom: 32px;
+      bottom: 28px;
       left: 16px;
       right: 16px;
       height: 72px;
@@ -179,7 +179,7 @@ import { TranslationService } from '../../services/translation.service';
 
     @media (max-width: 768px) {
       .timeline-bar {
-        bottom: calc(34px + env(safe-area-inset-bottom, 0px));
+        bottom: 28px;
         left: 8px;
         right: 8px;
         height: 58px;
@@ -210,17 +210,6 @@ import { TranslationService } from '../../services/translation.service';
 
       .date-label {
         display: none;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .timeline-bar {
-        bottom: calc(34px + env(safe-area-inset-bottom, 0px));
-        left: 6px;
-        right: 6px;
-        height: 52px;
-        padding: 0 8px;
-        gap: 6px;
       }
     }
   `]
