@@ -989,8 +989,23 @@ export class MapComponent implements OnInit, OnDestroy {
       const props = feature.properties;
       const mag = Number(props['magnitude']) || 0;
       const depth = Number(props['depth']) || 0;
+      // Resolver el ID real del sismo evitando el ID numérico 0 asignado por MapLibre Supercluster
+      const propsId = props['id'] || props['eventId'];
+      let selectedId: string | null = (propsId && propsId !== '0') ? String(propsId) : null;
+      if (!selectedId && typeof feature.id === 'string' && feature.id !== '0' && isNaN(Number(feature.id))) {
+        selectedId = feature.id;
+      }
+      if (!selectedId) {
+        const match = this.earthquakeService.earthquakes().find(eq =>
+          Math.abs(eq.geometry.coordinates[0] - coords[0]) < 0.005 &&
+          Math.abs(eq.geometry.coordinates[1] - coords[1]) < 0.005
+        );
+        if (match) selectedId = match.id;
+      }
 
-      this.earthquakeService.selectEarthquake(feature.id as string);
+      if (selectedId) {
+        this.earthquakeService.selectEarthquake(selectedId);
+      }
       this.seismographHud?.triggerSeismicSpike(mag);
 
       const dateObj = new Date(props['time']);
@@ -1085,9 +1100,9 @@ export class MapComponent implements OnInit, OnDestroy {
       // Escuchar evento de reporte ciudadano
       setTimeout(() => {
         const reportBtn = document.getElementById('popup-report-btn');
-        if (reportBtn) {
+        if (reportBtn && selectedId) {
           reportBtn.onclick = () => {
-            this.earthquakeService.selectEarthquake(feature.id as string);
+            this.earthquakeService.selectEarthquake(selectedId!);
           };
         }
       }, 100);
@@ -1276,12 +1291,21 @@ export class MapComponent implements OnInit, OnDestroy {
   private updateMapData(features: GeoJsonFeature[]) {
     if (!this.map || !this.map.isStyleLoaded()) return;
 
-    // Actualizar fuente sismos general
+    // Actualizar fuente sismos general inyectando el ID en properties para evitar sobreescritura por clustering
+    const enrichedFeatures = features.map(f => ({
+      ...f,
+      properties: {
+        ...f.properties,
+        id: f.id,
+        eventId: f.id
+      }
+    }));
+
     const source = this.map.getSource('earthquakes') as GeoJSONSource;
     if (source) {
       source.setData({
         type: 'FeatureCollection',
-        features: features
+        features: enrichedFeatures
       });
     }
 
