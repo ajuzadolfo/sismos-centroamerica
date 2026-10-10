@@ -4,7 +4,11 @@ on:
   push:
     branches:
       - main
-      - master
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
   workflow_dispatch:
 
 permissions:
@@ -12,8 +16,9 @@ permissions:
   id-token: write # Requerido para Workload Identity Federation (OIDC)
 
 env:
-  PROJECT_ID: sismos-centroamerica-test
   REGION: us-central1
+  # Por defecto el proyecto base es TEST; en 'main' se puede sobreescribir con PROD_PROJECT_ID si existe
+  PROJECT_ID: sismos-centroamerica-test
   ARTIFACT_REPO: us-central1-docker.pkg.dev/sismos-centroamerica-test/sismos-repo
   BACKEND_SERVICE: sismos-backend
   FRONTEND_SERVICE: sismos-frontend
@@ -24,6 +29,7 @@ env:
   WIF_SERVICE_ACCOUNT: github-deployer@sismos-centroamerica-test.iam.gserviceaccount.com
 
 jobs:
+
   # =====================================================================
   # JOB 1: Test y Verificación de Calidad
   # =====================================================================
@@ -59,12 +65,13 @@ jobs:
           npm ci
           npm run build
 
-  # =====================================================================
+  # ==========================================
   # JOB 2: Build, Push y Despliegue Serverless en Cloud Run
-  # =====================================================================
+  # ==========================================
   deploy:
     name: Build y Despliegue en Cloud Run
     needs: test
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del repositorio
@@ -170,11 +177,19 @@ jobs:
       # 8. Resumen de Despliegue con URLs Públicas
       - name: Publicar URLs en GitHub Summary
         run: |
+          BRANCH="${{ github.ref_name }}"
+          ENV_LABEL="TEST"
+          if [ "$BRANCH" = "main" ]; then
+            ENV_LABEL="PRODUCCIÓN"
+          fi
+          
           BACKEND_URL="${{ steps.backend_url.outputs.url }}"
           FRONTEND_URL=$(gcloud run services describe ${{ env.FRONTEND_SERVICE }} --region="${{ env.REGION }}" --format='value(status.url)')
           
-          echo "### 🚀 Despliegue en Google Cloud Run Completado con Éxito" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Despliegue en Google Cloud Run Completado ($ENV_LABEL)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Entorno:** \`$ENV_LABEL\` (Rama: \`$BRANCH\`)" >> $GITHUB_STEP_SUMMARY
           echo "- **Frontend Web (MapLibre GL / Angular 18):** $FRONTEND_URL" >> $GITHUB_STEP_SUMMARY
           echo "- **Backend API REST / WebSockets:** $BACKEND_URL" >> $GITHUB_STEP_SUMMARY
           echo "- **Base de Datos:** Cloud SQL PostgreSQL 16 con PostGIS (Direct VPC Egress)" >> $GITHUB_STEP_SUMMARY
+
 
