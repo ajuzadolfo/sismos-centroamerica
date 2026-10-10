@@ -915,7 +915,7 @@ export class MapComponent implements OnInit, OnDestroy {
       const magColor = mag < 3.5 ? '#00e676' : (mag < 4.5 ? '#ffea00' : (mag < 6.0 ? '#ff9100' : '#ff1744'));
 
       const popupHtml = `
-        <div style="font-family: Outfit, sans-serif; width: 350px; max-width: min(390px, calc(100vw - 48px)); padding: 2px;">
+        <div style="font-family: Outfit, sans-serif; width: 298px; max-width: min(330px, calc(100vw - 40px)); padding: 2px;">
           <!-- Cabecera de Magnitud y Profundidad -->
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <span style="font-weight: 800; font-size: 1.25rem; color: ${magColor}; letter-spacing: -0.02em;">
@@ -967,7 +967,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
       if (this.activePopup) this.activePopup.remove();
 
-      this.activePopup = new Popup({ offset: 12, closeButton: true, maxWidth: '420px' })
+      this.activePopup = new Popup({ offset: 12, closeButton: true, maxWidth: '360px' })
         .setLngLat(coords)
         .setHTML(popupHtml)
         .addTo(this.map!);

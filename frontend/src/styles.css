@@ -154,7 +154,7 @@ html, body {
 
 /* MapLibre Popup Styling Customization */
 .maplibregl-popup {
-  max-width: 420px !important;
+  max-width: 360px !important;
 }
 
 .maplibregl-popup-content {
