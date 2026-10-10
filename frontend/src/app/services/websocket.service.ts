@@ -1,6 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Client, IMessage } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { environment } from '../../environments/environment';
 import { EarthquakeService } from './earthquake.service';
 import { GeoJsonFeature } from '../models/earthquake.model';
@@ -24,14 +23,7 @@ export class WebSocketService {
       brokerURL: wsUrl,
       reconnectDelay: 5000,
       heartbeatIncoming: 25000,
-      heartbeatOutgoing: 25000,
-      webSocketFactory: () => {
-        try {
-          return new WebSocket(wsUrl);
-        } catch {
-          return new SockJS(environment.wsUrl);
-        }
-      }
+      heartbeatOutgoing: 25000
     });
 
     this.stompClient.onConnect = (frame) => {
