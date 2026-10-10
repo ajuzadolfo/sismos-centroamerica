@@ -79,10 +79,15 @@ The system demonstrates a resilient, reactive pipeline designed to ingest, spati
 ## ✨ Key Features
 
 - **🔴 Real-Time Streaming Telemetry:** Live earthquake feed dispatch over WebSocket (STOMP `/topic/earthquakes`) without client-side polling.
+- **⚡ Real-Time Instrumental ShakeMap (MMI):** Calibrated Ground Motion Prediction Equation (GMPE) attenuation model generating dynamic isoseismal rings (MMI III to VIII+) draped on 3D terrain and calculating estimated impact on Central American cities.
+- **✨ Gemini 2.5 Flash Intelligence Briefings:** Automatic geoscientific and civil protection situational reports contextualized with tectonic trenches, crustal fault lines, tsunami risk, and critical infrastructure advice.
 - **🗺️ Interactive 3D WebGL Geodynamics:** MapLibre GL JS with DEM elevation tiles, subduction zone trenches (Middle America Trench), active volcanoes, and hazard-striped geological faults.
+- **📊 BigQuery GIS Data Lake & Omori Law ML:** Historical analytical warehouse with spatiotemporal clustering (`ST_ClusterDBSCAN`) and BigQuery ML aftershock probability forecasting ($n(t) = K / (t+c)^p$) for 24h, 48h, and 72h windows.
 - **👥 Crowdsourced "Did You Feel It?" Intensity System:** Community-driven perception reports with spatial clustering and spam protection.
+- **📱 PWA & Mobile Haptics:** Progressive Web App with offline caching shell and tactile vibration feedback (`navigator.vibrate`) upon major events.
 - **🌐 Bilingual Localization (ES / EN):** Instant reactive language switching supporting Central America (UTC-6) and UTC timestamps.
-- **📱 True Mobile Responsive Console:** Optimized for flagship and mid-range devices (e.g., Samsung Galaxy AMOLED screens) using dynamic viewport height (`100dvh`) and safe-area insets.
+- **☁️ Multi-Cloud Portability (Zero Lock-In):** Decoupled `SeismicMessageBroker` abstraction, production-grade Kubernetes Helm Chart (`infra/helm/sismos-chart`), and complete AWS Terraform deployment (ECS Fargate + RDS PostgreSQL PostGIS).
+- **🧪 Stress & Load Testing Suite:** k6 performance suite simulating up to 10,000 concurrent WebSocket subscribers under $p(95) < 300\text{ ms}$.
 - **🔒 Enterprise Cloud & Security:**
   - Google Cloud Run with **Direct VPC Egress** to Private IP Cloud SQL (zero serverless VPC access connector overhead).
   - Keyless CI/CD with **Workload Identity Federation (WIF / OIDC)**.
@@ -103,9 +108,11 @@ The system demonstrates a resilient, reactive pipeline designed to ingest, spati
 │   ├── src/app/components/   # Monitor, 3D Map, Timeline, Header, Filters, Landing
 │   ├── src/app/services/     # WebSocket STOMP, Translation, Earthquake State
 │   └── public/               # Vector branding, custom seismic favicons, map styles
-├── infra/terraform/          # Infrastructure as Code for Google Cloud Platform
-│   ├── main.tf               # Cloud Run, Cloud SQL PostGIS, VPC, Secret Manager
-│   └── wif.tf                # Workload Identity Federation OIDC GitHub Deployer
+├── infra/
+│   ├── bigquery/             # BigQuery GIS schemas, DBSCAN clustering & Omori ML SQLs
+│   ├── helm/sismos-chart/    # Multi-cloud Kubernetes Helm chart (Deployments, HPA, Ingress)
+│   ├── terraform/            # Infrastructure as Code (GCP Cloud Run/SQL + AWS ECS/RDS)
+│   └── tests/load/           # k6 10,000 concurrent WebSocket load testing suite
 ├── .github/workflows/        # Automated test, build, and deploy GitHub Actions pipeline
 └── docker-compose.yml        # Local development environment with PostGIS database
 ```
