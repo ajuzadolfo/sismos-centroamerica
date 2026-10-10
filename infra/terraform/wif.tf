@@ -51,7 +51,7 @@ locals {
 }
 
 resource "google_project_iam_member" "deployer_roles" {
-  for_each = var.github_repository != "" ? toset(locals.deployer_roles) : []
+  for_each = var.github_repository != "" ? toset(local.deployer_roles) : []
   project  = var.project_id
   role     = each.key
   member   = "serviceAccount:${google_service_account.github_deployer[0].email}"
