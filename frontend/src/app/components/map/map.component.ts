@@ -884,7 +884,8 @@ export class MapComponent implements OnInit, OnDestroy {
       this.seismographHud?.triggerSeismicSpike(mag);
 
       const dateObj = new Date(props['time']);
-      const localTimeStr = dateObj.toLocaleString('es', {
+      const caTimeStr = dateObj.toLocaleString('es-GT', {
+        timeZone: 'America/Guatemala',
         dateStyle: 'medium',
         timeStyle: 'short'
       });
@@ -893,7 +894,7 @@ export class MapComponent implements OnInit, OnDestroy {
       const magColor = mag < 3.5 ? '#00e676' : (mag < 4.5 ? '#ffea00' : (mag < 6.0 ? '#ff9100' : '#ff1744'));
 
       const popupHtml = `
-        <div style="font-family: Outfit, sans-serif; min-width: 230px; padding: 4px;">
+        <div style="font-family: Outfit, sans-serif; min-width: 240px; padding: 4px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <span style="font-weight: 800; font-size: 1.25rem; color: ${magColor}; letter-spacing: -0.02em;">
               M ${mag.toFixed(1)}
@@ -912,14 +913,14 @@ export class MapComponent implements OnInit, OnDestroy {
             ${props['place'] || props['title']}
           </div>
 
-          <!-- Marcas Temporales: Local y UTC -->
+          <!-- Marcas Temporales: Centroamérica (UTC-6) y UTC -->
           <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 8px; margin-bottom: 12px; font-size: 0.7rem; font-family: monospace;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <span style="color: #64748b; font-weight: 700;">LOCAL:</span>
-              <span style="color: #e2e8f0;">${localTimeStr}</span>
+              <span style="color: #64748b; font-weight: 700;">CENTROAMÉRICA:</span>
+              <span style="color: #e2e8f0;">${caTimeStr}</span>
             </div>
             <div style="display: flex; justify-content: space-between;">
-              <span style="color: #00f0ff; font-weight: 700;">UTC:</span>
+              <span style="color: #00f0ff; font-weight: 700;">UNIVERSAL (UTC):</span>
               <span style="color: #94a3b8;">${utcTimeStr}</span>
             </div>
           </div>

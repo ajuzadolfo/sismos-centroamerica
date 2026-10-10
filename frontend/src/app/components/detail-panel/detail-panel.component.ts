@@ -24,11 +24,11 @@ import { environment } from '../../../environments/environment';
           <h2 class="epicenter-title">{{ event.place || event.title }}</h2>
           <div class="timestamps-group">
             <div class="time-item">
-              <span class="time-tag">LOCAL</span>
-              <span class="time-val">{{ event.time | date:'d MMM y, HH:mm:ss' }}</span>
+              <span class="time-tag">CENTROAMÉRICA (UTC-6)</span>
+              <span class="time-val">{{ event.time | date:'d MMM y, HH:mm:ss':'-0600' }}</span>
             </div>
             <div class="time-item utc">
-              <span class="time-tag">UTC</span>
+              <span class="time-tag">UNIVERSAL (UTC)</span>
               <span class="time-val">{{ event.time | date:'d MMM y, HH:mm:ss':'UTC' }}</span>
             </div>
           </div>

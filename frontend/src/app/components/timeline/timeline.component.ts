@@ -204,10 +204,11 @@ export class TimelineComponent implements OnDestroy {
   });
 
   readonly currentDateLabel = computed(() => {
-    return new Date(this.currentTime()).toLocaleString('es', {
+    return new Date(this.currentTime()).toLocaleString('es-GT', {
+      timeZone: 'America/Guatemala',
       dateStyle: 'medium',
       timeStyle: 'short'
-    });
+    }) + ' (UTC-6)';
   });
 
   ngOnDestroy() {
