@@ -33,42 +33,6 @@ const VOLCANOES_DATA = {
   ]
 };
 
-function buildExtrusionFeature(feature: GeoJsonFeature) {
-  const [lng, lat] = feature.geometry.coordinates;
-  const mag = feature.properties.magnitude;
-  const radius = Math.max(2200, Math.pow(mag, 1.7) * 750); // Metros
-  const height = Math.max(8000, Math.pow(mag, 2.1) * 3200); // Metros de altura visual (50km - 180km)
-
-  const coordinates: number[][][] = [[]];
-  const earthRadius = 6378137;
-  const sides = 8; // Octágono regular para pilar 3D redondeado
-  for (let i = 0; i <= sides; i++) {
-    const angle = (i * 2 * Math.PI) / sides;
-    const dLat = (radius * Math.sin(angle)) / earthRadius;
-    const dLng = (radius * Math.cos(angle)) / (earthRadius * Math.cos((lat * Math.PI) / 180));
-    coordinates[0].push([
-      lng + (dLng * 180) / Math.PI,
-      lat + (dLat * 180) / Math.PI
-    ]);
-  }
-
-  return {
-    type: 'Feature' as const,
-    id: feature.id,
-    properties: {
-      id: feature.id,
-      magnitude: mag,
-      depth: feature.properties.depth,
-      place: feature.properties.place,
-      time: feature.properties.time,
-      pillar_height: height
-    },
-    geometry: {
-      type: 'Polygon' as const,
-      coordinates: coordinates
-    }
-  };
-}
 
 function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
   return {
@@ -205,16 +169,15 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
         </div>
       }
 
-      <!-- Leyenda de Magnitud y Columnas 3D -->
+      <!-- Leyenda de Magnitud -->
       <div class="legend-panel glass-panel">
-        <div class="legend-title">MAGNITUD &amp; PILARES 3D</div>
+        <div class="legend-title">MAGNITUD (Mw)</div>
         <div class="legend-items">
           <div class="legend-item"><span class="dot mag-low"></span> &lt; 3.5 Menor</div>
           <div class="legend-item"><span class="dot mag-med"></span> 3.5 - 4.4 Moderado</div>
           <div class="legend-item"><span class="dot mag-high"></span> 4.5 - 5.9 Fuerte</div>
           <div class="legend-item"><span class="dot mag-major"></span> &ge; 6.0 Mayor</div>
         </div>
-        <div class="legend-tip">Altura pilar = Energía sísmica</div>
       </div>
     </div>
   `,
@@ -638,43 +601,6 @@ export class MapComponent implements OnInit, OnDestroy {
       clusterRadius: 40
     });
 
-    // 2. Fuente para Columnas Holográficas 3D de sismos (fill-extrusion)
-    this.map.addSource('earthquakes-3d-extrusions', {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features: [] }
-    });
-
-    // 3. Capa de Columnas Holográficas 3D extruidas en elevación física
-    this.map.addLayer({
-      id: 'earthquakes-3d-pillars',
-      type: 'fill-extrusion',
-      source: 'earthquakes-3d-extrusions',
-      paint: {
-        'fill-extrusion-color': [
-          'step', ['get', 'magnitude'],
-          'rgba(0, 230, 118, 0.75)',
-          3.5, 'rgba(255, 234, 0, 0.75)',
-          4.5, 'rgba(255, 145, 0, 0.82)',
-          6.0, 'rgba(255, 23, 68, 0.9)'
-        ],
-        'fill-extrusion-height': ['get', 'pillar_height'],
-        'fill-extrusion-base': 0,
-        'fill-extrusion-opacity': 0.85
-      }
-    });
-
-    // 4. Anillo de Resplandor Neón en la Cúspide de las Columnas 3D
-    this.map.addLayer({
-      id: 'earthquakes-3d-pillar-tops',
-      type: 'fill-extrusion',
-      source: 'earthquakes-3d-extrusions',
-      paint: {
-        'fill-extrusion-color': '#ffffff',
-        'fill-extrusion-height': ['get', 'pillar_height'],
-        'fill-extrusion-base': ['-', ['get', 'pillar_height'], 1500],
-        'fill-extrusion-opacity': 0.95
-      }
-    });
 
     // 5. Capa de Mapa de Calor (Heatmap)
     this.map.addLayer({
@@ -944,15 +870,6 @@ export class MapComponent implements OnInit, OnDestroy {
       });
     });
 
-    // Clic en columnas 3D de sismos
-    this.map.on('click', 'earthquakes-3d-pillars', (e) => {
-      if (!e.features || e.features.length === 0) return;
-      const feat = e.features[0];
-      const eventId = feat.properties?.['id'];
-      if (eventId) {
-        this.earthquakeService.selectEarthquake(eventId);
-      }
-    });
 
     // Clic en sismo individual: abrir popup estilizado
     this.map.on('click', 'unclustered-point', (e) => {
@@ -1060,8 +977,6 @@ export class MapComponent implements OnInit, OnDestroy {
     this.map.on('mouseleave', 'clusters', () => this.map!.getCanvas().style.cursor = '');
     this.map.on('mouseenter', 'unclustered-point', () => this.map!.getCanvas().style.cursor = 'pointer');
     this.map.on('mouseleave', 'unclustered-point', () => this.map!.getCanvas().style.cursor = '');
-    this.map.on('mouseenter', 'earthquakes-3d-pillars', () => this.map!.getCanvas().style.cursor = 'pointer');
-    this.map.on('mouseleave', 'earthquakes-3d-pillars', () => this.map!.getCanvas().style.cursor = '');
   }
 
   private loadGeologicalFaults() {
@@ -1226,18 +1141,6 @@ export class MapComponent implements OnInit, OnDestroy {
       });
     }
 
-    // Actualizar columnas holográficas 3D
-    const extrusionSource = this.map.getSource('earthquakes-3d-extrusions') as GeoJSONSource;
-    if (extrusionSource) {
-      const extrusionFeatures = features
-        .filter(f => f.properties.magnitude >= 3.0)
-        .map(f => buildExtrusionFeature(f));
-
-      extrusionSource.setData({
-        type: 'FeatureCollection',
-        features: extrusionFeatures
-      });
-    }
   }
 
   private updateCitizenClustersLayer(clusters: any) {
