@@ -43,3 +43,6 @@ Thumbs.db
 
 # Antigravity Brain / Temp
 .gemini/
+
+# Documentos locales del libro (no versionados)
+ARQUITECTURA_Y_CONFIGURACION_TECNICA.md
