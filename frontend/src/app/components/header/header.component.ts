@@ -145,7 +145,7 @@ import { TranslationService } from '../../services/translation.service';
     }
 
     .title-container h1 {
-      font-size: 1rem;
+      font-size: 0.9rem;
       font-weight: 800;
       letter-spacing: 0.05em;
       color: #ffffff;
@@ -285,15 +285,17 @@ import { TranslationService } from '../../services/translation.service';
         left: 8px;
         right: 8px;
         height: 56px;
-        padding: 0 12px;
+        padding: 0 8px 0 12px;
+        gap: 8px;
       }
 
       .logo-group {
         gap: 8px;
+        flex-shrink: 0;
       }
 
       .title-container h1 {
-        font-size: 0.85rem;
+        font-size: 0.76rem;
       }
 
       .subtitle {
@@ -307,6 +309,7 @@ import { TranslationService } from '../../services/translation.service';
       .metric-chip {
         padding: 4px 8px;
         gap: 6px;
+        flex-shrink: 0;
       }
 
       .metric-label {
@@ -317,9 +320,37 @@ import { TranslationService } from '../../services/translation.service';
         font-size: 0.8rem;
       }
 
+      .actions-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0, 240, 255, 0.4) transparent;
+        padding: 4px 2px;
+        margin-left: auto;
+      }
+
+      .actions-group::-webkit-scrollbar {
+        height: 3px;
+      }
+
+      .actions-group::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .actions-group::-webkit-scrollbar-thumb {
+        background: rgba(0, 240, 255, 0.4);
+        border-radius: 4px;
+      }
+
       .btn-toggle {
         padding: 6px 10px;
         gap: 6px;
+        flex-shrink: 0;
       }
 
       .btn-toggle span {
@@ -329,15 +360,21 @@ import { TranslationService } from '../../services/translation.service';
       .btn-lang-toggle {
         padding: 5px 8px;
         font-size: 0.68rem;
+        flex-shrink: 0;
       }
 
       .btn-icon {
         width: 32px;
         height: 32px;
+        flex-shrink: 0;
       }
     }
 
     @media (max-width: 520px) {
+      .title-container h1 {
+        font-size: 0.70rem;
+      }
+
       .subtitle {
         display: none;
       }
@@ -348,6 +385,7 @@ import { TranslationService } from '../../services/translation.service';
 
       .header {
         height: 52px;
+        padding: 0 6px 0 10px;
       }
     }
   `]
