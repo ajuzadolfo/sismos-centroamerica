@@ -1,12 +1,13 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, catchError, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   EarthquakeDetail,
   EarthquakeFilter,
   GeoJsonFeature,
-  GeoJsonFeatureCollection
+  GeoJsonFeatureCollection,
+  SeismicIntelligenceReport
 } from '../models/earthquake.model';
 
 @Injectable({
@@ -72,6 +73,13 @@ export class EarthquakeService {
         next: (data) => {
           this.earthquakes.set(data.features || []);
           this.loading.set(false);
+          // Auto-seleccionar el sismo principal para activar de inmediato el ShakeMap y el panel de detalle
+          if (!this.selectedEarthquake() && data.features && data.features.length > 0) {
+            const major = data.features.reduce((max, cur) => cur.properties.magnitude > max.properties.magnitude ? cur : max);
+            if (major) {
+              this.selectEarthquake(major.id);
+            }
+          }
         },
         error: () => this.loading.set(false)
       })
@@ -108,8 +116,38 @@ export class EarthquakeService {
 
   getEarthquakeDetail(id: string): Observable<EarthquakeDetail> {
     return this.http.get<EarthquakeDetail>(`${environment.apiUrl}/earthquakes/${id}`).pipe(
-      tap(detail => this.selectedEarthquake.set(detail))
+      tap(detail => this.selectedEarthquake.set(detail)),
+      catchError(err => {
+        // Fallback resiliente: construir detalle con la información disponible en memoria
+        const cached = this.earthquakes().find(e => e.id === id);
+        if (cached) {
+          const fallbackDetail: EarthquakeDetail = {
+            id: cached.id,
+            title: cached.properties.title,
+            place: cached.properties.place,
+            time: cached.properties.time,
+            updatedAt: cached.properties.updatedAt,
+            magnitude: cached.properties.magnitude,
+            magnitudeType: cached.properties.magnitudeType,
+            depth: cached.properties.depth,
+            status: cached.properties.status,
+            alertLevel: cached.properties.alertLevel,
+            significance: cached.properties.significance,
+            tsunamiAlert: cached.properties.tsunamiAlert,
+            latitude: cached.geometry.coordinates[1],
+            longitude: cached.geometry.coordinates[0],
+            totalCitizenReports: 0
+          };
+          this.selectedEarthquake.set(fallbackDetail);
+          return of(fallbackDetail);
+        }
+        return of(null as any);
+      })
     );
+  }
+
+  getIntelligenceReport(id: string): Observable<SeismicIntelligenceReport> {
+    return this.http.get<SeismicIntelligenceReport>(`${environment.apiUrl}/earthquakes/${id}/intelligence-report`);
   }
 
   readonly selectedCitizenClusters = signal<GeoJsonFeatureCollection | null>(null);
@@ -130,6 +168,7 @@ export class EarthquakeService {
   }
 
   selectEarthquake(id: string) {
+    if (!id || id === '0' || id === 'undefined') return;
     this.getEarthquakeDetail(id).subscribe();
     this.getCitizenClusters(id).subscribe({
       next: (clusters) => this.selectedCitizenClusters.set(clusters),

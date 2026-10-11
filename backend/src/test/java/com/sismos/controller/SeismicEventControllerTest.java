@@ -42,6 +42,9 @@ class SeismicEventControllerTest {
     @MockBean
     private com.sismos.service.UsgsIngestionService usgsIngestionService;
 
+    @MockBean
+    private com.sismos.service.GeminiIntelligenceService geminiIntelligenceService;
+
     @Test
     @DisplayName("GET /api/v1/earthquakes/recent debe devolver FeatureCollection GeoJSON")
     void shouldReturnRecentEarthquakesAsGeoJson() throws Exception {
@@ -82,5 +85,23 @@ class SeismicEventControllerTest {
 
         mockMvc.perform(get("/api/v1/earthquakes/nonexistent"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/earthquakes/{id}/intelligence-report debe retornar reporte exitoso")
+    void shouldReturnIntelligenceReport() throws Exception {
+        com.sismos.model.dto.SeismicIntelligenceReportDto reportDto = com.sismos.model.dto.SeismicIntelligenceReportDto.builder()
+                .eventId("us7000test")
+                .title("M 4.2 - Managua, Nicaragua")
+                .modelUsed("gemini-2.5-flash")
+                .executiveSummary("Análisis geocientífico de prueba")
+                .build();
+
+        when(geminiIntelligenceService.generateReport("us7000test")).thenReturn(reportDto);
+
+        mockMvc.perform(get("/api/v1/earthquakes/us7000test/intelligence-report"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.eventId").value("us7000test"))
+                .andExpect(jsonPath("$.modelUsed").value("gemini-2.5-flash"));
     }
 }

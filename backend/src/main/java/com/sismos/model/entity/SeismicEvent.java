@@ -61,4 +61,8 @@ public class SeismicEvent {
     public Double getLatitude() {
         return geom != null ? geom.getY() : null;
     }
+
+    public Point getGeometry() {
+        return geom;
+    }
 }

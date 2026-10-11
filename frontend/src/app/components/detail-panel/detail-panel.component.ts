@@ -3,12 +3,14 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { EarthquakeService } from '../../services/earthquake.service';
 import { TranslationService } from '../../services/translation.service';
+import { ShakeMapService, ShakeMapResult } from '../../services/shakemap.service';
+import { AiBriefingModalComponent } from '../ai-briefing/ai-briefing-modal.component';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-detail-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, AiBriefingModalComponent],
   template: `
     @if (earthquakeService.selectedEarthquake(); as event) {
       <div class="detail-card glass-panel">
@@ -111,8 +113,41 @@ import { environment } from '../../../environments/environment';
               </div>
             }
           </div>
+
+          <!-- Módulo ShakeMap Instrumental (MMI) -->
+          @if (getShakeMapData(event); as shake) {
+            <div class="shakemap-section">
+              <div class="shakemap-header">
+                <span class="shakemap-title">SHAKEMAP // INTENSIDAD MMI</span>
+                <span class="mmi-badge" [style.background-color]="shake.epicentralColor + '20'" [style.border-color]="shake.epicentralColor" [style.color]="shake.epicentralColor">
+                  {{ shake.epicentralLabel }}
+                </span>
+              </div>
+              @if (shake.impactedCities && shake.impactedCities.length > 0) {
+                <div class="impacted-cities-list">
+                  <span class="cities-label">{{ transService.currentLang() === 'en' ? 'Estimated perception in cities:' : 'Percepción estimada en ciudades:' }}</span>
+                  @for (city of shake.impactedCities.slice(0, 3); track city.cityName) {
+                    <div class="city-impact-row">
+                      <span class="city-name">{{ city.cityName }} ({{ city.distanceKm }} km)</span>
+                      <span class="city-mmi" [style.color]="city.intensityColor">{{ city.intensityLabel }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Botón de Análisis Fozna AI (Gemini 2.5 Flash) -->
+          <button class="btn-ai-analysis" (click)="isAiModalOpen.set(true)">
+            <span class="sparkle">✨</span>
+            <span>{{ transService.currentLang() === 'en' ? 'Generate AI Briefing (Gemini 2.5)' : 'Análisis Inteligente Fozna AI' }}</span>
+          </button>
         </div>
       </div>
+
+      @if (isAiModalOpen()) {
+        <app-ai-briefing-modal [eventId]="event.id" (close)="isAiModalOpen.set(false)" />
+      }
     }
 
   `,
@@ -380,6 +415,97 @@ import { environment } from '../../../environments/environment';
       animation: spin 0.8s linear infinite;
     }
 
+    .shakemap-section {
+      background: rgba(0, 240, 255, 0.03);
+      border: 1px solid rgba(0, 240, 255, 0.12);
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 14px;
+    }
+
+    .shakemap-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .shakemap-title {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #94a3b8;
+      letter-spacing: 0.06em;
+      font-family: var(--font-mono);
+    }
+
+    .mmi-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid;
+    }
+
+    .impacted-cities-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .cities-label {
+      font-size: 0.68rem;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+
+    .city-impact-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+    }
+
+    .city-name {
+      color: #cbd5e1;
+    }
+
+    .city-mmi {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 0.68rem;
+    }
+
+    .btn-ai-analysis {
+      width: 100%;
+      margin-top: 14px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.18) 0%, rgba(139, 92, 246, 0.25) 100%);
+      border: 1px solid rgba(0, 240, 255, 0.45);
+      border-radius: 10px;
+      color: #00f0ff;
+      font-family: var(--font-sans);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+    }
+
+    .btn-ai-analysis:hover {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.28) 0%, rgba(139, 92, 246, 0.4) 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 0 22px rgba(0, 240, 255, 0.3);
+    }
+
+    .btn-ai-analysis .sparkle {
+      font-size: 0.95rem;
+    }
+
     @media (max-width: 768px) {
       .detail-card {
         position: fixed;
@@ -416,10 +542,22 @@ import { environment } from '../../../environments/environment';
 export class DetailPanelComponent {
   earthquakeService = inject(EarthquakeService);
   transService = inject(TranslationService);
+  shakeMapService = inject(ShakeMapService);
   private http = inject(HttpClient);
 
+  readonly isAiModalOpen = signal<boolean>(false);
   reportStatus = signal<'idle' | 'submitting' | 'success' | 'error'>('idle');
   reportMessage = signal<string>('');
+
+  getShakeMapData(event: any): ShakeMapResult {
+    return this.shakeMapService.generateShakeMap(
+      event.longitude,
+      event.latitude,
+      event.magnitude,
+      event.depth,
+      this.transService.currentLang() === 'en' ? 'en' : 'es'
+    );
+  }
 
   getMagClass(mag: number): string {
     if (mag < 3.5) return 'mag-low';

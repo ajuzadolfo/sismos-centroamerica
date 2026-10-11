@@ -15,41 +15,28 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class WebSocketNotificationService {
 
-    private final SimpMessagingTemplate messagingTemplate;
+    private final com.sismos.event.SeismicMessageBroker messageBroker;
     private final GeoJsonMapper geoJsonMapper;
 
     /**
-     * Escucha eventos sísmicos persistidos y los transmite de inmediato a todos los navegadores
-     * conectados al canal /topic/earthquakes.
+     * Escucha eventos sísmicos persistidos y los transmite mediante el broker desacoplado.
      */
     @EventListener
     public void handleSeismicEventPersisted(SeismicEventPersistedEvent event) {
         try {
             GeoJsonFeature feature = geoJsonMapper.toFeature(event.getSeismicEvent());
-            messagingTemplate.convertAndSend("/topic/earthquakes", feature);
-            log.info("Notificacion WebSocket emitida a /topic/earthquakes para sismo ID: {} [Mag: {}]",
-                    feature.getId(),
-                    event.getSeismicEvent().getMagnitude());
+            messageBroker.publishSeismicEvent(feature);
         } catch (Exception e) {
-            log.error("Error al transmitir notificacion WebSocket: {}", e.getMessage(), e);
+            log.error("Error al transmitir notificacion de sismo: {}", e.getMessage(), e);
         }
     }
 
     /**
-     * Transmite actualizaciones en tiempo real del contador y promedio de reportes ciudadanos
-     * para un sismo específico.
+     * Transmite actualizaciones en tiempo real del contador y promedio de reportes ciudadanos.
      */
     public void notifyCitizenReport(String eventId, long totalReports, Double averageIntensity) {
         try {
-            java.util.Map<String, Object> update = java.util.Map.of(
-                    "eventId", eventId,
-                    "totalCitizenReports", totalReports,
-                    "averagePerceivedIntensity", averageIntensity != null ? averageIntensity : 0.0,
-                    "updatedAt", java.time.Instant.now().toString()
-            );
-            messagingTemplate.convertAndSend("/topic/earthquakes/" + eventId + "/reports", update);
-            messagingTemplate.convertAndSend("/topic/reports", update);
-            log.info("Notificacion WebSocket emitida para reportes del sismo ID: {} [Total: {}]", eventId, totalReports);
+            messageBroker.publishCitizenReport(eventId, totalReports, averageIntensity);
         } catch (Exception e) {
             log.error("Error al transmitir notificacion de reporte ciudadano: {}", e.getMessage(), e);
         }

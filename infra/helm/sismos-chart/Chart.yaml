@@ -1,0 +1,16 @@
+apiVersion: v2
+name: sismos-chart
+description: Helm Chart de producción para la Plataforma de Monitorización Sísmica de Centroamérica (Fozna Solutions)
+type: application
+version: 1.0.0
+appVersion: "2026.1.0"
+maintainers:
+  - name: Fozna Solutions Architecture Team
+    email: engineering@foznasolutions.com
+keywords:
+  - seismology
+  - geodynamics
+  - gcp
+  - aws
+  - multi-cloud
+  - kubernetes

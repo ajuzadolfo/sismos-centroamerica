@@ -13,6 +13,7 @@ import { Map, GeoJSONSource, Popup, NavigationControl, ScaleControl, setWorkerUr
 import { EarthquakeService } from '../../services/earthquake.service';
 import { AudioAlertService } from '../../services/audio-alert.service';
 import { TranslationService } from '../../services/translation.service';
+import { ShakeMapService } from '../../services/shakemap.service';
 import { SeismographHudComponent } from './seismograph-hud.component';
 import { environment } from '../../../environments/environment';
 import { GeoJsonFeature } from '../../models/earthquake.model';
@@ -492,6 +493,7 @@ export class MapComponent implements OnInit, OnDestroy {
   earthquakeService = inject(EarthquakeService);
   audioService = inject(AudioAlertService);
   transService = inject(TranslationService);
+  shakeMapService = inject(ShakeMapService);
 
   private map: Map | null = null;
   private activePopup: Popup | null = null;
@@ -531,6 +533,26 @@ export class MapComponent implements OnInit, OnDestroy {
       const clusters = this.earthquakeService.selectedCitizenClusters();
       this.updateCitizenClustersLayer(clusters);
     });
+
+    // Efecto para visualizar las isolíneas de atenuación ShakeMap (MMI) del sismo seleccionado
+    effect(() => {
+      const selected = this.earthquakeService.selectedEarthquake();
+      if (this.map && this.map.getSource('shakemap-bands')) {
+        const source = this.map.getSource('shakemap-bands') as GeoJSONSource;
+        if (selected) {
+          const shakeResult = this.shakeMapService.generateShakeMap(
+            selected.longitude,
+            selected.latitude,
+            selected.magnitude,
+            selected.depth,
+            this.transService.currentLang() === 'en' ? 'en' : 'es'
+          );
+          source.setData(shakeResult.geojsonBands);
+        } else {
+          source.setData({ type: 'FeatureCollection', features: [] });
+        }
+      }
+    });
   }
 
   ngOnInit() {
@@ -568,7 +590,19 @@ export class MapComponent implements OnInit, OnDestroy {
       this.setupLayers();
       this.loadGeologicalFaults();
       this.loadVolcanicArc();
-      this.earthquakeService.loadRecentEarthquakes().subscribe();
+
+      // Renderizado inmediato de sismos en cuanto el mapa esté listo
+      const current = this.earthquakeService.filteredEarthquakes();
+      if (current.length > 0) {
+        this.updateMapData(current);
+      }
+
+      // Cargar/actualizar catálogo sísmico desde el backend
+      this.earthquakeService.loadRecentEarthquakes().subscribe({
+        next: () => {
+          this.updateMapData(this.earthquakeService.filteredEarthquakes());
+        }
+      });
     });
 
     // Detener órbita al interactuar manualmente con el mapa
@@ -650,10 +684,16 @@ export class MapComponent implements OnInit, OnDestroy {
   private setupLayers() {
     if (!this.map) return;
 
-    // 1. Fuente GeoJSON de sismos con clustering
+    // 1. Fuente GeoJSON de sismos con clustering (inicializada con datos inmediatos si ya existen)
+    const currentFeatures = this.earthquakeService.filteredEarthquakes();
+    const initialFeatures = currentFeatures.map(f => ({
+      ...f,
+      properties: { ...f.properties, id: f.id, eventId: f.id }
+    }));
+
     this.map.addSource('earthquakes', {
       type: 'geojson',
-      data: { type: 'FeatureCollection', features: [] },
+      data: { type: 'FeatureCollection', features: initialFeatures },
       cluster: true,
       clusterMaxZoom: 12,
       clusterRadius: 40
@@ -858,6 +898,36 @@ export class MapComponent implements OnInit, OnDestroy {
       }
     });
 
+    // 11. Capa de Atenuación Sísmica ShakeMap (MMI - Isolínas de Impacto Instrumental)
+    this.map.addSource('shakemap-bands', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
+    });
+
+    const beforePointId = this.map.getLayer('unclustered-point') ? 'unclustered-point' : undefined;
+
+    this.map.addLayer({
+      id: 'shakemap-bands-fill',
+      type: 'fill',
+      source: 'shakemap-bands',
+      paint: {
+        'fill-color': ['get', 'color'],
+        'fill-opacity': ['get', 'opacity']
+      }
+    }, beforePointId);
+
+    this.map.addLayer({
+      id: 'shakemap-bands-line',
+      type: 'line',
+      source: 'shakemap-bands',
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-width': 1.5,
+        'line-opacity': 0.7,
+        'line-dasharray': [3, 2]
+      }
+    }, beforePointId);
+
     // Eventos interactivos del mapa
     this.registerMapEvents();
   }
@@ -937,9 +1007,47 @@ export class MapComponent implements OnInit, OnDestroy {
       const props = feature.properties;
       const mag = Number(props['magnitude']) || 0;
       const depth = Number(props['depth']) || 0;
+      // Resolver el ID real del sismo evitando el ID numérico 0 asignado por MapLibre Supercluster
+      const propsId = props['id'] || props['eventId'];
+      let selectedId: string | null = (propsId && propsId !== '0') ? String(propsId) : null;
+      if (!selectedId && typeof feature.id === 'string' && feature.id !== '0' && isNaN(Number(feature.id))) {
+        selectedId = feature.id;
+      }
+      if (!selectedId) {
+        const match = this.earthquakeService.earthquakes().find(eq =>
+          Math.abs(eq.geometry.coordinates[0] - coords[0]) < 0.005 &&
+          Math.abs(eq.geometry.coordinates[1] - coords[1]) < 0.005
+        );
+        if (match) selectedId = match.id;
+      }
 
-      this.earthquakeService.selectEarthquake(feature.id as string);
+      // Establecer de inmediato el sismo seleccionado de forma síncrona para activación instantánea del ShakeMap
+      const baseDetail = {
+        id: selectedId || String(feature.id),
+        title: props['title'] || props['place'] || 'Sismo en Centroamérica',
+        place: props['place'] || props['title'],
+        time: props['time'] || new Date().toISOString(),
+        updatedAt: props['updatedAt'],
+        magnitude: mag,
+        magnitudeType: props['magnitudeType'] || 'Mw',
+        depth: depth,
+        status: props['status'] || 'REVIEWED',
+        alertLevel: props['alertLevel'],
+        significance: Number(props['significance']) || 0,
+        tsunamiAlert: props['tsunamiAlert'] === true || props['tsunamiAlert'] === 'true',
+        latitude: coords[1],
+        longitude: coords[0],
+        totalCitizenReports: 0
+      };
+      this.earthquakeService.selectedEarthquake.set(baseDetail as any);
+
+      if (selectedId) {
+        this.earthquakeService.selectEarthquake(selectedId);
+      }
       this.seismographHud?.triggerSeismicSpike(mag);
+      if (this.map) {
+        this.map.flyTo({ center: coords, zoom: Math.max(this.map.getZoom(), 7.0), speed: 1.1 });
+      }
 
       const dateObj = new Date(props['time']);
       const caDate = dateObj.toLocaleDateString('es', {
@@ -1033,9 +1141,9 @@ export class MapComponent implements OnInit, OnDestroy {
       // Escuchar evento de reporte ciudadano
       setTimeout(() => {
         const reportBtn = document.getElementById('popup-report-btn');
-        if (reportBtn) {
+        if (reportBtn && selectedId) {
           reportBtn.onclick = () => {
-            this.earthquakeService.selectEarthquake(feature.id as string);
+            this.earthquakeService.selectEarthquake(selectedId!);
           };
         }
       }, 100);
@@ -1222,14 +1330,28 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   private updateMapData(features: GeoJsonFeature[]) {
-    if (!this.map || !this.map.isStyleLoaded()) return;
+    if (!this.map) return;
+    if (!this.map.isStyleLoaded()) {
+      // Si el mapa aún está cargando su estilo, encolar para pintar en cuanto esté listo
+      this.map.once('load', () => this.updateMapData(features));
+      return;
+    }
 
-    // Actualizar fuente sismos general
+    // Actualizar fuente sismos general inyectando el ID en properties para evitar sobreescritura por clustering
+    const enrichedFeatures = features.map(f => ({
+      ...f,
+      properties: {
+        ...f.properties,
+        id: f.id,
+        eventId: f.id
+      }
+    }));
+
     const source = this.map.getSource('earthquakes') as GeoJSONSource;
     if (source) {
       source.setData({
         type: 'FeatureCollection',
-        features: features
+        features: enrichedFeatures
       });
     }
 
