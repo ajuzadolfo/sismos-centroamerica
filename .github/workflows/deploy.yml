@@ -36,7 +36,7 @@ jobs:
   # JOB 1: Test, Seguridad y Verificación de Calidad (Fases 1, 2 y 3)
   # =====================================================================
   test:
-    name: Calidad, Seguridad y Pruebas Unitarias
+    name: Pruebas Unitarias (Backend y Frontend)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del repositorio
