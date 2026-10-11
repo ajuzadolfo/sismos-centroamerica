@@ -205,9 +205,14 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
         display: none !important;
       }
       :host ::ng-deep .maplibregl-ctrl-bottom-right {
-        bottom: 96px !important;
-        transform: scale(0.85);
+        bottom: 86px !important;
+        transform: scale(0.75);
         transform-origin: bottom right;
+      }
+      :host ::ng-deep .maplibregl-ctrl-attrib {
+        background-color: rgba(3, 7, 18, 0.75) !important;
+        padding: 1px 4px !important;
+        border-radius: 4px;
       }
     }
 
@@ -450,13 +455,14 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
 
     @media (max-width: 768px) {
       .camera-bar {
-        top: 70px;
+        top: 68px;
         padding: 4px 8px;
         gap: 4px;
         max-width: calc(100vw - 16px);
         overflow-x: auto;
         white-space: nowrap;
         scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
       }
       .camera-bar::-webkit-scrollbar {
         display: none;
@@ -482,6 +488,21 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
 
       .legend-panel {
         display: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .camera-bar {
+        top: 60px;
+        padding: 3px 6px;
+        gap: 3px;
+        max-width: calc(100vw - 12px);
+      }
+      .preset-btn,
+      .orbit-btn,
+      .tilt-toggle-btn {
+        padding: 2px 6px;
+        font-size: 0.62rem;
       }
     }
   `]

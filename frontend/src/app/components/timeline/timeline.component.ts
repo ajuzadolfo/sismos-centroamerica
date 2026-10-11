@@ -175,6 +175,7 @@ import { TranslationService } from '../../services/translation.service';
     .reset-btn {
       white-space: nowrap;
       font-size: 0.75rem;
+      flex-shrink: 0;
     }
 
     @media (max-width: 768px) {
@@ -190,6 +191,7 @@ import { TranslationService } from '../../services/translation.service';
       .play-btn {
         width: 36px;
         height: 36px;
+        flex-shrink: 0;
       }
 
       .current-date-badge {
@@ -210,6 +212,33 @@ import { TranslationService } from '../../services/translation.service';
 
       .date-label {
         display: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .timeline-bar {
+        bottom: 28px;
+        left: 6px;
+        right: 6px;
+        height: 52px;
+        padding: 0 8px;
+        gap: 6px;
+        max-width: calc(100vw - 12px);
+      }
+
+      .play-btn {
+        width: 32px;
+        height: 32px;
+      }
+
+      .current-date-badge {
+        font-size: 0.60rem;
+        padding: 1px 5px;
+      }
+
+      .reset-btn {
+        font-size: 0.64rem;
+        padding: 3px 6px;
       }
     }
   `]

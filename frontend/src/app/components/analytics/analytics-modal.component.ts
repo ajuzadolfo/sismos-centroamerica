@@ -339,9 +339,14 @@ import { environment } from '../../../environments/environment';
 
     .omori-header {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
       margin-bottom: 8px;
+    }
+
+    .omori-header h4 {
+      margin-bottom: 0;
     }
 
     .omori-badge {
@@ -370,6 +375,20 @@ import { environment } from '../../../environments/environment';
     @media (max-width: 500px) {
       .forecast-windows {
         grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .modal-backdrop {
+        padding: 8px;
+      }
+      .analytics-card {
+        padding: 16px 14px;
+        max-height: 92dvh;
+        border-radius: 14px;
+      }
+      .country-name {
+        width: 75px;
       }
     }
 

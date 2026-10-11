@@ -229,6 +229,26 @@ import { EarthquakeFilter } from '../../models/earthquake.model';
     .drawer-footer button {
       flex: 1;
     }
+
+    @media (max-width: 480px) {
+      .drawer-panel {
+        width: 100%;
+        max-width: 100vw;
+      }
+
+      .drawer-header {
+        padding: 16px 20px;
+      }
+
+      .drawer-content {
+        padding: 18px 20px;
+        gap: 20px;
+      }
+
+      .drawer-footer {
+        padding: 16px 20px;
+      }
+    }
   `]
 })
 export class FiltersComponent {

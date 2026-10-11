@@ -515,6 +515,7 @@ import { environment } from '../../../environments/environment';
         right: 0;
         width: 100%;
         max-height: 80vh;
+        max-height: 80dvh;
         border-radius: 20px 20px 0 0;
         padding: 18px 16px;
         z-index: 150;
@@ -522,6 +523,7 @@ import { environment } from '../../../environments/environment';
         border-left: none;
         border-right: none;
         border-bottom: none;
+        -webkit-overflow-scrolling: touch;
       }
 
       .params-grid {
@@ -535,6 +537,62 @@ import { environment } from '../../../environments/environment';
 
       .emoji-buttons button {
         padding: 8px 4px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .detail-card {
+        padding: 16px 14px;
+        max-height: 82dvh;
+      }
+
+      .card-header {
+        margin-bottom: 12px;
+      }
+
+      .magnitude-display {
+        padding: 4px 10px;
+      }
+
+      .mag-num {
+        font-size: 1.3rem;
+      }
+
+      .epicenter-title {
+        font-size: 0.98rem;
+        margin-bottom: 6px;
+      }
+
+      .timestamps-group {
+        padding: 6px 10px;
+        margin-bottom: 12px;
+      }
+
+      .time-item {
+        font-size: 0.70rem;
+      }
+
+      .time-item .time-val {
+        font-size: 0.70rem;
+      }
+
+      .params-grid {
+        gap: 6px;
+        margin-bottom: 14px;
+      }
+
+      .emoji-buttons {
+        gap: 4px;
+      }
+
+      .emoji-buttons button {
+        padding: 6px 2px;
+        font-size: 0.62rem;
+      }
+
+      .shakemap-section {
+        padding: 10px;
+        margin-top: 10px;
       }
     }
   `]
