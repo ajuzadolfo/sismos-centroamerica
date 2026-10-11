@@ -1041,7 +1041,7 @@ export class MapComponent implements OnInit, OnDestroy {
       // Establecer de inmediato el sismo seleccionado de forma síncrona para activación instantánea del ShakeMap
       const baseDetail = {
         id: selectedId || String(feature.id),
-        title: props['title'] || props['place'] || 'Sismo en Centroamérica',
+        title: props['title'] || props['place'] || (this.transService.currentLang() === 'en' ? 'Central America Earthquake' : 'Sismo en Centroamérica'),
         place: props['place'] || props['title'],
         time: props['time'] || new Date().toISOString(),
         updatedAt: props['updatedAt'],

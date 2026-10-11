@@ -27,7 +27,7 @@ import { environment } from '../../../environments/environment';
           <h2 class="epicenter-title">{{ event.place || event.title }}</h2>
           <div class="timestamps-group">
             <div class="time-item">
-              <span class="time-tag">CENTROAMÉRICA (UTC-6)</span>
+              <span class="time-tag">{{ transService.currentLang() === 'en' ? 'CENTRAL AMERICA (UTC-6)' : 'CENTROAMÉRICA (UTC-6)' }}</span>
               <span class="time-val">{{ event.time | date:'d MMM y, HH:mm:ss':'-0600' }}</span>
             </div>
             <div class="time-item utc">
@@ -118,7 +118,7 @@ import { environment } from '../../../environments/environment';
           @if (getShakeMapData(event); as shake) {
             <div class="shakemap-section">
               <div class="shakemap-header">
-                <span class="shakemap-title">SHAKEMAP // INTENSIDAD MMI</span>
+                <span class="shakemap-title">{{ transService.currentLang() === 'en' ? 'SHAKEMAP // MMI INTENSITY' : 'SHAKEMAP // INTENSIDAD MMI' }}</span>
                 <span class="mmi-badge" [style.background-color]="shake.epicentralColor + '20'" [style.border-color]="shake.epicentralColor" [style.color]="shake.epicentralColor">
                   {{ shake.epicentralLabel }}
                 </span>
@@ -140,7 +140,7 @@ import { environment } from '../../../environments/environment';
           <!-- Botón de Análisis Fozna AI (Gemini 2.5 Flash) -->
           <button class="btn-ai-analysis" (click)="isAiModalOpen.set(true)">
             <span class="sparkle">✨</span>
-            <span>{{ transService.currentLang() === 'en' ? 'Generate AI Briefing (Gemini 2.5)' : 'Análisis Inteligente Fozna AI' }}</span>
+            <span>{{ transService.currentLang() === 'en' ? 'Fozna AI Seismic Briefing (Gemini 2.5)' : 'Informe Sísmico Fozna AI (Gemini 2.5)' }}</span>
           </button>
         </div>
       </div>
@@ -663,11 +663,17 @@ export class DetailPanelComponent {
       next: (res) => {
         const km = res.distanceToEpicenterMeters ? Math.round(res.distanceToEpicenterMeters / 1000) : 0;
         this.reportStatus.set('success');
-        this.reportMessage.set(`¡Reporte verificado! Distancia calculada al epicentro: ${km} km.`);
+        const successMsg = this.transService.currentLang() === 'en'
+          ? `Verified report! Calculated distance to epicenter: ${km} km.`
+          : `¡Reporte verificado! Distancia calculada al epicentro: ${km} km.`;
+        this.reportMessage.set(successMsg);
       },
       error: (err) => {
         this.reportStatus.set('error');
-        const errorText = err.error?.message || err.message || 'Error al validar reporte geoespacial.';
+        const fallbackError = this.transService.currentLang() === 'en'
+          ? 'Error validating geospatial report.'
+          : 'Error al validar reporte geoespacial.';
+        const errorText = err.error?.message || err.message || fallbackError;
         this.reportMessage.set(errorText);
       }
     });

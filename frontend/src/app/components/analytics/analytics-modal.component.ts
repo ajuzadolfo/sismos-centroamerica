@@ -32,7 +32,7 @@ import { environment } from '../../../environments/environment';
           <div class="modal-content">
             <!-- 1. Distribución por País -->
             <div class="section-card">
-              <h4>{{ transService.currentLang() === 'en' ? 'Sismic activity by Country (Last 30 Days)' : 'Sismicidad por País (Últimos 30 Días)' }}</h4>
+              <h4>{{ transService.currentLang() === 'en' ? 'Seismic activity by Country (Last 30 Days)' : 'Sismicidad por País (Últimos 30 Días)' }}</h4>
               <div class="country-bars">
                 @for (item of getCountryList(); track item.name) {
                   <div class="bar-row">
@@ -103,17 +103,17 @@ import { environment } from '../../../environments/environment';
 
                 <div class="forecast-windows">
                   <div class="fc-box">
-                    <span class="fc-time">24 HORAS</span>
-                    <span class="fc-count">~{{ fc.forecastWindow24h?.estimatedAftershockCount }} réplicas</span>
-                    <span class="fc-prob">Prob. M&ge;5: {{ fc.forecastWindow24h?.probabilityM5Plus }}</span>
+                    <span class="fc-time">{{ transService.currentLang() === 'en' ? '24 HOURS' : '24 HORAS' }}</span>
+                    <span class="fc-count">~{{ fc.forecastWindow24h?.estimatedAftershockCount }} {{ transService.currentLang() === 'en' ? 'aftershocks' : 'réplicas' }}</span>
+                    <span class="fc-prob">{{ transService.currentLang() === 'en' ? 'M≥5 Prob:' : 'Prob. M≥5:' }} {{ fc.forecastWindow24h?.probabilityM5Plus }}</span>
                   </div>
                   <div class="fc-box">
-                    <span class="fc-time">48 HORAS</span>
-                    <span class="fc-count">~{{ fc.forecastWindow48h?.estimatedAftershockCount }} réplicas</span>
+                    <span class="fc-time">{{ transService.currentLang() === 'en' ? '48 HOURS' : '48 HORAS' }}</span>
+                    <span class="fc-count">~{{ fc.forecastWindow48h?.estimatedAftershockCount }} {{ transService.currentLang() === 'en' ? 'aftershocks' : 'réplicas' }}</span>
                   </div>
                   <div class="fc-box">
-                    <span class="fc-time">72 HORAS</span>
-                    <span class="fc-count">~{{ fc.forecastWindow72h?.estimatedAftershockCount }} réplicas</span>
+                    <span class="fc-time">{{ transService.currentLang() === 'en' ? '72 HOURS' : '72 HORAS' }}</span>
+                    <span class="fc-count">~{{ fc.forecastWindow72h?.estimatedAftershockCount }} {{ transService.currentLang() === 'en' ? 'aftershocks' : 'réplicas' }}</span>
                   </div>
                 </div>
               </div>
@@ -471,13 +471,21 @@ export class AnalyticsModalComponent implements OnInit {
     if (!dist) return [];
 
     const total = this.summary()?.totalEventsAnalyzed || 1;
+    const isEn = this.transService.currentLang() === 'en';
     return Object.keys(dist)
       .filter(k => k !== 'Otros / Océano' || dist[k] > 0)
-      .map(k => ({
-        name: k,
-        count: dist[k],
-        percentage: Math.min(100, Math.round((dist[k] / total) * 100) * 2.5) // Escala visual proporcional
-      }))
+      .map(k => {
+        let displayName = k;
+        if (isEn) {
+          if (k === 'Panamá') displayName = 'Panama';
+          else if (k === 'Otros / Océano') displayName = 'Other / Offshore';
+        }
+        return {
+          name: displayName,
+          count: dist[k],
+          percentage: Math.min(100, Math.round((dist[k] / total) * 100) * 2.5) // Escala visual proporcional
+        };
+      })
       .sort((a, b) => b.count - a.count);
   }
 }

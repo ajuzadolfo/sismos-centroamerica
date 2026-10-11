@@ -349,7 +349,7 @@ const EN_TRANSLATIONS: Translations = {
   },
   landing: {
     company: 'FOZNA SOLUTIONS',
-    product: 'CENTRAL AMERICA SEISMIC',
+    product: 'CENTRAL AMERICA EARTHQUAKES',
     navCta: 'Enter Console',
     exploreCta: 'Explore Live Console',
     docsCta: 'Technical Documentation',

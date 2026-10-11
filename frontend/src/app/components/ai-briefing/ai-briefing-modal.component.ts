@@ -60,7 +60,7 @@ import { SeismicIntelligenceReport } from '../../models/earthquake.model';
             </div>
 
             <!-- Evaluación de Tsunami -->
-            <div class="section-box tsunami-box" [class.danger]="rep.tsunamiRiskAssessment.includes('ALERTA')">
+            <div class="section-box tsunami-box" [class.danger]="rep.tsunamiRiskAssessment.includes('ALERTA') || rep.tsunamiRiskAssessment.includes('ALERT')">
               <h4 class="section-title">
                 <span class="icon">🌊</span>
                 {{ transService.currentLang() === 'en' ? 'Tsunami Threat Assessment' : 'Evaluación de Amenaza de Tsunami' }}
