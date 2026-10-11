@@ -33,7 +33,7 @@ env:
 jobs:
 
   # =====================================================================
-  # JOB 1: Test y Verificación de Calidad
+  # JOB 1: Test, Seguridad y Verificación de Calidad (Fases 1, 2 y 3)
   # =====================================================================
   test:
     name: Pruebas Unitarias (Backend y Frontend)
@@ -41,7 +41,22 @@ jobs:
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # Fase 3: Detección preventiva de fugas de secretos
+      - name: Gitleaks - Escaneo de Fuga de Secretos
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Fase 3: Auditoría preventiva de dependencias vulnerables en Pull Requests
+      - name: Revisión de Seguridad de Dependencias (CVEs)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        continue-on-error: true
+
+      # Fase 1: Backend Java 21, Pruebas Unitarias y Cobertura JaCoCo
       - name: Configurar Java 21 (Eclipse Temurin)
         uses: actions/setup-java@v4
         with:
@@ -49,11 +64,20 @@ jobs:
           java-version: '21'
           cache: 'maven'
 
-      - name: Ejecutar pruebas unitarias de Spring Boot
+      - name: Ejecutar pruebas unitarias de Spring Boot y Cobertura JaCoCo
         run: |
           cd backend
-          mvn test -B
+          mvn clean test jacoco:report -B
 
+      - name: Publicar Reporte de Cobertura JaCoCo
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-coverage-report
+          path: backend/target/site/jacoco/
+          retention-days: 14
+
+      # Fase 2: Frontend Angular 18, Linting con ESLint y Compilación
       - name: Configurar Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -61,10 +85,19 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Instalar dependencias y compilar Angular
+      - name: Instalar dependencias del Frontend
         run: |
           cd frontend
           npm ci
+
+      - name: Análisis Estático de Código Frontend (ESLint)
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Compilar Frontend Angular
+        run: |
+          cd frontend
           npm run build
 
   # ==========================================
