@@ -189,6 +189,13 @@ jobs:
           DB_PASS=$(gcloud secrets versions access latest --secret=db-password --project=${{ env.PROJECT_ID }})
           echo "Conectando backend a BD en IP: $DB_IP (Proyecto: ${{ env.PROJECT_ID }})"
 
+          # Limpiar cualquier referencia previa a secretos vinculados para permitir actualizar a variable de entorno
+          gcloud run services update ${{ env.BACKEND_SERVICE }} \
+            --project="${{ env.PROJECT_ID }}" \
+            --region="${{ env.REGION }}" \
+            --clear-secrets \
+            --quiet || true
+
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
             --project="${{ env.PROJECT_ID }}" \
             --image="${{ env.ARTIFACT_REPO }}/backend:${{ github.sha }}" \
