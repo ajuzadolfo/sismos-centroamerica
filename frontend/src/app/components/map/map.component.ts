@@ -455,14 +455,20 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
 
     @media (max-width: 768px) {
       .camera-bar {
-        top: 68px;
-        padding: 4px 8px;
-        gap: 4px;
+        top: 62px;
+        left: 8px;
+        right: 8px;
+        transform: none;
         max-width: calc(100vw - 16px);
+        width: auto;
         overflow-x: auto;
+        overflow-y: hidden;
         white-space: nowrap;
         scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
+        padding: 3px 6px;
+        gap: 4px;
+        justify-content: flex-start;
       }
       .camera-bar::-webkit-scrollbar {
         display: none;
@@ -470,39 +476,29 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
       .camera-title {
         display: none;
       }
+      .preset-buttons {
+        display: flex;
+        gap: 4px;
+        flex-shrink: 0;
+      }
       .preset-btn {
         padding: 3px 6px;
-        font-size: 0.65rem;
+        font-size: 0.64rem;
         flex-shrink: 0;
       }
       .orbit-btn {
         padding: 3px 6px;
-        font-size: 0.65rem;
+        font-size: 0.64rem;
         flex-shrink: 0;
       }
       .tilt-toggle-btn {
-        padding: 3px 7px;
-        font-size: 0.65rem;
+        padding: 3px 6px;
+        font-size: 0.64rem;
         flex-shrink: 0;
       }
 
       .legend-panel {
         display: none;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .camera-bar {
-        top: 60px;
-        padding: 3px 6px;
-        gap: 3px;
-        max-width: calc(100vw - 12px);
-      }
-      .preset-btn,
-      .orbit-btn,
-      .tilt-toggle-btn {
-        padding: 2px 6px;
-        font-size: 0.62rem;
       }
     }
   `]

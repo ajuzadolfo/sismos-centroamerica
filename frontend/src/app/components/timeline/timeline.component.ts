@@ -57,7 +57,11 @@ import { TranslationService } from '../../services/translation.service';
 
       <!-- Botón de Reinicio -->
       <button class="reset-btn btn-secondary" (click)="resetTimeline()" [title]="transService.tr().timeline.reset">
-        {{ transService.tr().timeline.reset }}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+        <span class="reset-text">{{ transService.tr().timeline.reset }}</span>
       </button>
     </div>
   `,
@@ -125,6 +129,7 @@ import { TranslationService } from '../../services/translation.service';
 
     .slider-container {
       flex: 1;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -173,6 +178,9 @@ import { TranslationService } from '../../services/translation.service';
     }
 
     .reset-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       white-space: nowrap;
       font-size: 0.75rem;
       flex-shrink: 0;
@@ -180,12 +188,13 @@ import { TranslationService } from '../../services/translation.service';
 
     @media (max-width: 768px) {
       .timeline-bar {
-        bottom: 28px;
+        bottom: calc(24px + env(safe-area-inset-bottom, 0px) + 6px);
         left: 8px;
         right: 8px;
-        height: 58px;
-        padding: 0 10px;
+        height: 54px;
+        padding: 0 8px;
         gap: 8px;
+        max-width: calc(100vw - 16px);
       }
 
       .play-btn {
@@ -194,18 +203,6 @@ import { TranslationService } from '../../services/translation.service';
         flex-shrink: 0;
       }
 
-      .current-date-badge {
-        font-size: 0.65rem;
-        padding: 2px 6px;
-      }
-
-      .reset-btn {
-        font-size: 0.68rem;
-        padding: 4px 8px;
-      }
-    }
-
-    @media (max-width: 640px) {
       .speed-selector {
         display: none;
       }
@@ -213,32 +210,23 @@ import { TranslationService } from '../../services/translation.service';
       .date-label {
         display: none;
       }
-    }
-
-    @media (max-width: 480px) {
-      .timeline-bar {
-        bottom: 28px;
-        left: 6px;
-        right: 6px;
-        height: 52px;
-        padding: 0 8px;
-        gap: 6px;
-        max-width: calc(100vw - 12px);
-      }
-
-      .play-btn {
-        width: 32px;
-        height: 32px;
-      }
 
       .current-date-badge {
-        font-size: 0.60rem;
-        padding: 1px 5px;
+        font-size: 0.62rem;
+        padding: 2px 6px;
+      }
+
+      .reset-text {
+        display: none;
       }
 
       .reset-btn {
-        font-size: 0.64rem;
-        padding: 3px 6px;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 8px;
+        flex-shrink: 0;
       }
     }
   `]

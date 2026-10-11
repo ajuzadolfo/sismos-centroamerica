@@ -16,7 +16,10 @@ import { TranslationService } from '../../services/translation.service';
           <span class="dot"></span>
         </div>
         <div class="title-container">
-          <h1>{{ transService.tr().header.title }}</h1>
+          <h1 class="brand-title">
+            <span class="brand-main">{{ transService.currentLang() === 'es' ? 'SISMOS' : 'EARTHQUAKES' }}</span>
+            <span class="brand-sub">{{ transService.currentLang() === 'es' ? 'CENTROAMÉRICA' : 'CENTRAL AMERICA' }}</span>
+          </h1>
           <span class="subtitle">{{ transService.tr().header.subtitle }}</span>
         </div>
       </a>
@@ -149,13 +152,24 @@ import { TranslationService } from '../../services/translation.service';
       50% { opacity: 0.6; transform: scale(1.2); }
     }
 
-    .title-container h1 {
+    .brand-title {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
       font-size: 0.9rem;
       font-weight: 800;
       letter-spacing: 0.05em;
       color: #ffffff;
       line-height: 1.2;
       white-space: nowrap;
+    }
+
+    .brand-main {
+      color: #ffffff;
+    }
+
+    .brand-sub {
+      color: #ffffff;
     }
 
     .subtitle {
@@ -363,77 +377,18 @@ import { TranslationService } from '../../services/translation.service';
     /* Móviles y pantallas estrechas (< 768px) */
     @media (max-width: 768px) {
       .header {
-        top: 8px;
-        left: 8px;
-        right: 8px;
-        height: 56px;
-        padding: 0 8px 0 10px;
-        gap: 6px;
-        max-width: calc(100vw - 16px);
-      }
-
-      .logo-group {
-        gap: 8px;
-      }
-
-      .title-container h1 {
-        font-size: 0.76rem;
-      }
-
-      .subtitle {
-        font-size: 0.58rem;
-      }
-
-      .actions-group {
-        gap: 6px;
-        padding: 3px 2px;
-      }
-
-      .btn-toggle {
-        padding: 6px 8px;
-      }
-
-      .btn-lang-toggle {
-        padding: 5px 6px;
-        font-size: 0.68rem;
-      }
-
-      .btn-icon {
-        width: 32px;
-        height: 32px;
-      }
-    }
-
-    /* Móviles compactos (< 520px) */
-    @media (max-width: 520px) {
-      .title-container h1 {
-        font-size: 0.70rem;
-      }
-
-      .subtitle {
-        display: none;
-      }
-
-      .header {
-        height: 50px;
-        padding: 0 6px 0 8px;
-      }
-    }
-
-    /* Smartphones modernos estándar como Samsung Galaxy A54 5G / Pixel / iPhone (< 430px) */
-    @media (max-width: 430px) {
-      .header {
         top: 6px;
         left: 6px;
         right: 6px;
-        height: 48px;
-        padding: 0 6px 0 8px;
-        gap: 6px;
+        height: 50px;
+        padding: 0 8px;
+        gap: 8px;
         max-width: calc(100vw - 12px);
       }
 
       .logo-group {
-        gap: 6px;
+        gap: 7px;
+        flex-shrink: 0;
       }
 
       .pulse-indicator {
@@ -441,15 +396,34 @@ import { TranslationService } from '../../services/translation.service';
         height: 12px;
       }
 
-      .title-container h1 {
-        font-size: 0.67rem;
-        letter-spacing: 0.02em;
+      .brand-title {
+        flex-direction: column;
+        gap: 1px;
+        line-height: 1;
+      }
+
+      .brand-main {
+        font-size: 0.74rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+      }
+
+      .brand-sub {
+        font-size: 0.50rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: var(--accent-cyan);
+      }
+
+      .subtitle {
+        display: none;
       }
 
       .actions-group {
-        gap: 5px;
-        padding: 2px 0;
-        scrollbar-width: none;
+        gap: 4px;
+        padding: 0;
+        margin-left: auto;
+        flex-shrink: 0;
       }
 
       .actions-group::-webkit-scrollbar {
@@ -465,6 +439,7 @@ import { TranslationService } from '../../services/translation.service';
         padding: 4px 6px;
         font-size: 0.65rem;
         border-radius: 6px;
+        flex-shrink: 0;
       }
 
       .btn-icon {
