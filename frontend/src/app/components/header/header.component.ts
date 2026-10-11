@@ -98,19 +98,23 @@ import { TranslationService } from '../../services/translation.service';
       left: 16px;
       right: 16px;
       height: 64px;
-      padding: 0 20px;
+      padding: 0 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
       z-index: 100;
+      box-sizing: border-box;
+      max-width: calc(100vw - 32px);
     }
 
     .logo-group {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       text-decoration: none;
       cursor: pointer;
+      flex-shrink: 0;
     }
 
     .pulse-indicator {
@@ -121,6 +125,7 @@ import { TranslationService } from '../../services/translation.service';
       height: 16px;
       border-radius: 50%;
       background: rgba(239, 68, 68, 0.2);
+      flex-shrink: 0;
     }
     .pulse-indicator.connected {
       background: rgba(16, 185, 129, 0.2);
@@ -150,6 +155,7 @@ import { TranslationService } from '../../services/translation.service';
       letter-spacing: 0.05em;
       color: #ffffff;
       line-height: 1.2;
+      white-space: nowrap;
     }
 
     .subtitle {
@@ -158,22 +164,26 @@ import { TranslationService } from '../../services/translation.service';
       letter-spacing: 0.08em;
       color: var(--accent-cyan);
       display: block;
+      white-space: nowrap;
     }
 
     .metrics-group {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      flex-shrink: 1;
     }
 
     .metric-chip {
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-subtle);
       border-radius: 8px;
-      padding: 6px 14px;
+      padding: 6px 12px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .metric-label {
@@ -200,17 +210,48 @@ import { TranslationService } from '../../services/translation.service';
     .mag-high { background: rgba(255, 145, 0, 0.15); color: var(--mag-strong); }
     .mag-major { background: rgba(255, 23, 68, 0.15); color: var(--mag-major); }
 
+    /* Barra de acciones con scroll horizontal universal */
     .actions-group {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
+      min-width: 0;
+      flex-shrink: 1;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 240, 255, 0.4) transparent;
+      padding: 4px 6px 4px 2px;
+      margin-left: auto;
+    }
+
+    .actions-group::-webkit-scrollbar {
+      height: 4px;
+    }
+    .actions-group::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+    }
+    .actions-group::-webkit-scrollbar-thumb {
+      background: rgba(0, 240, 255, 0.4);
+      border-radius: 4px;
+    }
+    .actions-group::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-cyan);
+    }
+
+    .btn-toggle,
+    .btn-icon,
+    .btn-lang-toggle {
+      flex-shrink: 0;
     }
 
     .btn-toggle {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 7px 14px;
+      padding: 7px 12px;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border-subtle);
       border-radius: 8px;
@@ -219,6 +260,7 @@ import { TranslationService } from '../../services/translation.service';
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
+      white-space: nowrap;
     }
     .btn-toggle:hover {
       background: rgba(255, 255, 255, 0.1);
@@ -248,6 +290,18 @@ import { TranslationService } from '../../services/translation.service';
       color: #ffffff;
     }
 
+    /* Botón de Filtros destacado y visible */
+    .btn-filter {
+      background: rgba(0, 240, 255, 0.12);
+      border-color: rgba(0, 240, 255, 0.4);
+      color: var(--accent-cyan);
+    }
+    .btn-filter:hover {
+      background: rgba(0, 240, 255, 0.25);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+      color: #ffffff;
+    }
+
     .btn-lang-toggle {
       display: inline-flex;
       align-items: center;
@@ -262,6 +316,7 @@ import { TranslationService } from '../../services/translation.service';
       font-family: var(--font-mono);
       color: var(--text-muted);
       transition: all 0.2s ease;
+      white-space: nowrap;
     }
     .btn-lang-toggle:hover {
       background: rgba(255, 255, 255, 0.1);
@@ -279,19 +334,46 @@ import { TranslationService } from '../../services/translation.service';
       font-size: 0.65rem;
     }
 
+    /* Pantallas intermedias (Laptops y ventanas de 950px a 1150px como en la captura) */
+    @media (max-width: 1150px) {
+      .metrics-group .metric-chip:first-child {
+        display: none; /* Oculta contador de eventos para dar holgura a las acciones */
+      }
+      .btn-toggle span {
+        display: none; /* Oculta texto de Home, Heatmap, Analytics manteniendo los iconos */
+      }
+      .btn-toggle {
+        padding: 7px 10px;
+      }
+    }
+
+    /* Tablets y ventanas medianas (< 950px) */
+    @media (max-width: 950px) {
+      .metrics-group {
+        display: none; /* Oculta métricas para priorizar controles y botones */
+      }
+      .title-container h1 {
+        font-size: 0.82rem;
+      }
+      .subtitle {
+        font-size: 0.60rem;
+      }
+    }
+
+    /* Móviles y pantallas estrechas (< 768px) */
     @media (max-width: 768px) {
       .header {
         top: 8px;
         left: 8px;
         right: 8px;
         height: 56px;
-        padding: 0 8px 0 12px;
-        gap: 8px;
+        padding: 0 8px 0 10px;
+        gap: 6px;
+        max-width: calc(100vw - 16px);
       }
 
       .logo-group {
         gap: 8px;
-        flex-shrink: 0;
       }
 
       .title-container h1 {
@@ -302,74 +384,27 @@ import { TranslationService } from '../../services/translation.service';
         font-size: 0.58rem;
       }
 
-      .metrics-group .metric-chip:first-child {
-        display: none;
-      }
-
-      .metric-chip {
-        padding: 4px 8px;
-        gap: 6px;
-        flex-shrink: 0;
-      }
-
-      .metric-label {
-        font-size: 0.58rem;
-      }
-
-      .metric-value {
-        font-size: 0.8rem;
-      }
-
       .actions-group {
-        display: flex;
-        align-items: center;
         gap: 6px;
-        min-width: 0;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(0, 240, 255, 0.4) transparent;
-        padding: 4px 2px;
-        margin-left: auto;
-      }
-
-      .actions-group::-webkit-scrollbar {
-        height: 3px;
-      }
-
-      .actions-group::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .actions-group::-webkit-scrollbar-thumb {
-        background: rgba(0, 240, 255, 0.4);
-        border-radius: 4px;
+        padding: 3px 2px;
       }
 
       .btn-toggle {
-        padding: 6px 10px;
-        gap: 6px;
-        flex-shrink: 0;
-      }
-
-      .btn-toggle span {
-        display: none;
+        padding: 6px 8px;
       }
 
       .btn-lang-toggle {
-        padding: 5px 8px;
+        padding: 5px 6px;
         font-size: 0.68rem;
-        flex-shrink: 0;
       }
 
       .btn-icon {
         width: 32px;
         height: 32px;
-        flex-shrink: 0;
       }
     }
 
+    /* Móviles muy compactos (< 520px) */
     @media (max-width: 520px) {
       .title-container h1 {
         font-size: 0.70rem;
@@ -379,13 +414,9 @@ import { TranslationService } from '../../services/translation.service';
         display: none;
       }
 
-      .metrics-group {
-        display: none;
-      }
-
       .header {
-        height: 52px;
-        padding: 0 6px 0 10px;
+        height: 50px;
+        padding: 0 6px 0 8px;
       }
     }
   `]
