@@ -297,6 +297,17 @@ import { SeismicIntelligenceReport } from '../../models/earthquake.model';
       color: #ffffff;
       cursor: pointer;
     }
+
+    @media (max-width: 480px) {
+      .modal-backdrop {
+        padding: 8px;
+      }
+      .ai-modal {
+        padding: 16px 14px;
+        max-height: 92dvh;
+        border-radius: 14px;
+      }
+    }
   `]
 })
 export class AiBriefingModalComponent implements OnInit {

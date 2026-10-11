@@ -404,7 +404,7 @@ import { TranslationService } from '../../services/translation.service';
       }
     }
 
-    /* Móviles muy compactos (< 520px) */
+    /* Móviles compactos (< 520px) */
     @media (max-width: 520px) {
       .title-container h1 {
         font-size: 0.70rem;
@@ -417,6 +417,61 @@ import { TranslationService } from '../../services/translation.service';
       .header {
         height: 50px;
         padding: 0 6px 0 8px;
+      }
+    }
+
+    /* Smartphones modernos estándar como Samsung Galaxy A54 5G / Pixel / iPhone (< 430px) */
+    @media (max-width: 430px) {
+      .header {
+        top: 6px;
+        left: 6px;
+        right: 6px;
+        height: 48px;
+        padding: 0 6px 0 8px;
+        gap: 6px;
+        max-width: calc(100vw - 12px);
+      }
+
+      .logo-group {
+        gap: 6px;
+      }
+
+      .pulse-indicator {
+        width: 12px;
+        height: 12px;
+      }
+
+      .title-container h1 {
+        font-size: 0.67rem;
+        letter-spacing: 0.02em;
+      }
+
+      .actions-group {
+        gap: 5px;
+        padding: 2px 0;
+        scrollbar-width: none;
+      }
+
+      .actions-group::-webkit-scrollbar {
+        display: none;
+      }
+
+      .btn-toggle {
+        padding: 5px 6px;
+        border-radius: 6px;
+      }
+
+      .btn-lang-toggle {
+        padding: 4px 6px;
+        font-size: 0.65rem;
+        border-radius: 6px;
+      }
+
+      .btn-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        flex-shrink: 0;
       }
     }
   `]
