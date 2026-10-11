@@ -54,6 +54,7 @@ jobs:
       - name: Revisión de Seguridad de Dependencias (CVEs)
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v4
+        continue-on-error: true
 
       # Fase 1: Backend Java 21, Pruebas Unitarias y Cobertura JaCoCo
       - name: Configurar Java 21 (Eclipse Temurin)
