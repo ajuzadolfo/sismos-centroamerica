@@ -186,9 +186,9 @@ jobs:
           if [ -z "$DB_IP" ] || [ "$DB_IP" = "null" ]; then
             DB_IP=$(gcloud sql instances describe sismos-pg-test --project=${{ env.PROJECT_ID }} --format=json | jq -r '.ipAddresses[]? | select(.type=="PRIMARY") | .ipAddress' | head -n1)
           fi
+          DB_PASS=$(gcloud secrets versions access latest --secret=db-password --project=${{ env.PROJECT_ID }})
           echo "Conectando backend a BD en IP: $DB_IP (Proyecto: ${{ env.PROJECT_ID }})"
 
-          # Despliegue seguro con --set-secrets enlazado directamente a Secret Manager
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
             --project="${{ env.PROJECT_ID }}" \
             --image="${{ env.ARTIFACT_REPO }}/backend:${{ github.sha }}" \
@@ -205,8 +205,7 @@ jobs:
             --network="${{ env.VPC_NETWORK }}" \
             --subnet="${{ env.VPC_SUBNET }}" \
             --vpc-egress=private-ranges-only \
-            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_IP}:5432/sismos_db,SPRING_DATASOURCE_USERNAME=sismos_app" \
-            --set-secrets="SPRING_DATASOURCE_PASSWORD=db-password:latest" \
+            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_IP}:5432/sismos_db,SPRING_DATASOURCE_USERNAME=sismos_app,SPRING_DATASOURCE_PASSWORD=${DB_PASS}" \
             --quiet
 
       # 5. Obtener URL pública del Backend
@@ -282,4 +281,4 @@ jobs:
           echo "- **Frontend Web (MapLibre GL / Angular 18):** $FRONTEND_URL" >> $GITHUB_STEP_SUMMARY
           echo "- **Backend API REST / WebSockets:** $BACKEND_URL" >> $GITHUB_STEP_SUMMARY
           echo "- **Base de Datos:** Cloud SQL PostgreSQL 16 con PostGIS (Direct VPC Egress)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Seguridad:** Enlace nativo con Secret Manager (\`--set-secrets\`)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Seguridad:** Autenticación OIDC vía WIF (Cero Claves JSON)" >> $GITHUB_STEP_SUMMARY
