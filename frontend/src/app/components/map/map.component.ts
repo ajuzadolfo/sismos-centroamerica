@@ -1041,7 +1041,7 @@ export class MapComponent implements OnInit, OnDestroy {
       // Establecer de inmediato el sismo seleccionado de forma síncrona para activación instantánea del ShakeMap
       const baseDetail = {
         id: selectedId || String(feature.id),
-        title: props['title'] || props['place'] || 'Sismo en Centroamérica',
+        title: props['title'] || props['place'] || (this.transService.currentLang() === 'en' ? 'Central America Earthquake' : 'Sismo en Centroamérica'),
         place: props['place'] || props['title'],
         time: props['time'] || new Date().toISOString(),
         updatedAt: props['updatedAt'],
@@ -1066,104 +1066,10 @@ export class MapComponent implements OnInit, OnDestroy {
         this.map.flyTo({ center: coords, zoom: Math.max(this.map.getZoom(), 7.0), speed: 1.1 });
       }
 
-      const dateObj = new Date(props['time']);
-      const caDate = dateObj.toLocaleDateString('es', {
-        timeZone: 'America/Guatemala',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      });
-      const caHour = dateObj.toLocaleTimeString('es', {
-        timeZone: 'America/Guatemala',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-      const caFormatted = `${caDate}, ${caHour}`;
-
-      const utcDate = dateObj.toLocaleDateString('es', {
-        timeZone: 'UTC',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      });
-      const utcHour = dateObj.toLocaleTimeString('es', {
-        timeZone: 'UTC',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-      const utcFormatted = `${utcDate}, ${utcHour} UTC`;
-
-      const magColor = mag < 3.5 ? '#00e676' : (mag < 4.5 ? '#ffea00' : (mag < 6.0 ? '#ff9100' : '#ff1744'));
-
-      const popupHtml = `
-        <div style="font-family: Outfit, sans-serif; width: 298px; max-width: min(330px, calc(100vw - 40px)); padding: 2px;">
-          <!-- Cabecera de Magnitud y Profundidad -->
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-            <span style="font-weight: 800; font-size: 1.25rem; color: ${magColor}; letter-spacing: -0.02em;">
-              M ${mag.toFixed(1)}
-            </span>
-            <span style="font-size: 0.72rem; color: #94a3b8; font-family: monospace; background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 4px;">
-              ${depth.toFixed(1)} km ${this.transService.tr().popup.depth}
-            </span>
-          </div>
-
-          <!-- Barra de Profundidad -->
-          <div style="background: rgba(255,255,255,0.08); height: 4px; border-radius: 2px; margin-bottom: 10px; overflow: hidden;">
-            <div style="background: linear-gradient(90deg, #00f0ff, #8b5cf6); width: ${Math.min(100, (depth / 150) * 100)}%; height: 100%;"></div>
-          </div>
-
-          <!-- Título del Epicentro -->
-          <div style="font-weight: 600; font-size: 0.88rem; color: #f8fafc; margin-bottom: 10px; line-height: 1.35;">
-            ${props['place'] || props['title']}
-          </div>
-
-          <!-- Marcas Temporales Ajustadas (24h sin saltos de línea) -->
-          <div style="background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; font-size: 0.72rem; font-family: monospace;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-              <span style="color: #64748b; font-weight: 700; font-size: 0.64rem; letter-spacing: 0.04em;">${this.transService.tr().popup.localTime}</span>
-              <span style="color: #f1f5f9; font-weight: 600;">${caFormatted}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: #00f0ff; font-weight: 700; font-size: 0.64rem; letter-spacing: 0.04em;">${this.transService.tr().popup.utcTime}</span>
-              <span style="color: #94a3b8; font-weight: 600;">${utcFormatted}</span>
-            </div>
-          </div>
-
-          <!-- Botón de Reporte Ciudadano a Ancho Completo -->
-          <button id="popup-report-btn" style="
-            width: 100%;
-            padding: 8px 12px;
-            background: linear-gradient(135deg, #00f0ff 0%, #0284c7 100%);
-            border: none;
-            border-radius: 8px;
-            color: #020617;
-            font-weight: 700;
-            font-size: 0.8rem;
-            cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0, 240, 255, 0.25);
-            transition: transform 0.15s ease;
-          ">${this.transService.tr().popup.reportBtn}</button>
-        </div>
-      `;
-
-      if (this.activePopup) this.activePopup.remove();
-
-      this.activePopup = new Popup({ offset: 12, closeButton: true, maxWidth: '360px' })
-        .setLngLat(coords)
-        .setHTML(popupHtml)
-        .addTo(this.map!);
-
-      // Escuchar evento de reporte ciudadano
-      setTimeout(() => {
-        const reportBtn = document.getElementById('popup-report-btn');
-        if (reportBtn && selectedId) {
-          reportBtn.onclick = () => {
-            this.earthquakeService.selectEarthquake(selectedId!);
-          };
-        }
-      }, 100);
+      if (this.activePopup) {
+        this.activePopup.remove();
+        this.activePopup = null;
+      }
     });
 
     // Cambiar cursor a pointer al pasar sobre sismos o clusters
