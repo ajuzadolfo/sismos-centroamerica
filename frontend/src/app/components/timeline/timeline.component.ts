@@ -188,10 +188,10 @@ import { TranslationService } from '../../services/translation.service';
 
     @media (max-width: 768px) {
       .timeline-bar {
-        bottom: calc(24px + env(safe-area-inset-bottom, 0px) + 6px);
+        bottom: calc(10px + env(safe-area-inset-bottom, 8px));
         left: 8px;
         right: 8px;
-        height: 54px;
+        height: 52px;
         padding: 0 8px;
         gap: 8px;
         max-width: calc(100vw - 16px);

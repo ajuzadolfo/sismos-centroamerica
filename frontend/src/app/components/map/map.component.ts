@@ -1348,30 +1348,32 @@ export class MapComponent implements OnInit, OnDestroy {
 
   private updateMapData(features: GeoJsonFeature[]) {
     if (!this.map) return;
-    if (!this.map.isStyleLoaded()) {
-      // Si el mapa aún está cargando su estilo, encolar para pintar en cuanto esté listo
-      this.map.once('load', () => this.updateMapData(features));
-      return;
-    }
-
-    // Actualizar fuente sismos general inyectando el ID en properties para evitar sobreescritura por clustering
-    const enrichedFeatures = features.map(f => ({
-      ...f,
-      properties: {
-        ...f.properties,
-        id: f.id,
-        eventId: f.id
-      }
-    }));
 
     const source = this.map.getSource('earthquakes') as GeoJSONSource;
     if (source) {
+      // Actualizar fuente sismos general inyectando el ID en properties para evitar sobreescritura por clustering
+      const enrichedFeatures = features.map(f => ({
+        ...f,
+        properties: {
+          ...f.properties,
+          id: f.id,
+          eventId: f.id
+        }
+      }));
+
       source.setData({
         type: 'FeatureCollection',
         features: enrichedFeatures
       });
+      return;
     }
 
+    // Si la fuente 'earthquakes' aún no existe (las capas están inicializándose):
+    if (this.map.loaded()) {
+      setTimeout(() => this.updateMapData(features), 120);
+    } else {
+      this.map.once('load', () => this.updateMapData(features));
+    }
   }
 
   private updateCitizenClustersLayer(clusters: any) {
