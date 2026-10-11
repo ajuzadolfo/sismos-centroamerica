@@ -7,6 +7,7 @@ import { DetailPanelComponent } from '../detail-panel/detail-panel.component';
 import { FiltersComponent } from '../filters/filters.component';
 import { AnalyticsModalComponent } from '../analytics/analytics-modal.component';
 import { WebSocketService } from '../../services/websocket.service';
+import { EarthquakeService } from '../../services/earthquake.service';
 
 @Component({
   selector: 'app-monitor',
@@ -78,15 +79,23 @@ import { WebSocketService } from '../../services/websocket.service';
       color: #64748b;
       font-family: var(--font-sans);
     }
+
+    @media (max-width: 768px) {
+      .monitor-footer {
+        display: none;
+      }
+    }
   `]
 })
 export class MonitorComponent implements OnInit, OnDestroy {
   private wsService = inject(WebSocketService);
+  private earthquakeService = inject(EarthquakeService);
   isFilterOpen = signal<boolean>(false);
   isAnalyticsOpen = signal<boolean>(false);
 
   ngOnInit() {
     this.wsService.connect();
+    this.earthquakeService.loadRecentEarthquakes().subscribe();
   }
 
   ngOnDestroy() {
