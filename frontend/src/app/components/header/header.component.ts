@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { EarthquakeService } from '../../services/earthquake.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { TranslationService } from '../../services/translation.service';
+import { PushNotificationService } from '../../services/push-notification.service';
 
 @Component({
   selector: 'app-header',
@@ -81,6 +82,21 @@ import { TranslationService } from '../../services/translation.service';
             <line x1="6" y1="20" x2="6" y2="14"/>
           </svg>
           <span>{{ transService.currentLang() === 'en' ? 'Analytics' : 'Analítica' }}</span>
+        </button>
+
+        <!-- Alertas Web Push (PWA) -->
+        <button
+          class="btn-toggle btn-push-alert"
+          [class.active]="pushService.isSubscribed()"
+          (click)="togglePush()"
+          [title]="pushService.isSubscribed() ? 
+            (transService.currentLang() === 'en' ? 'Push Alerts Active (M ≥ 4.5)' : 'Alertas Push Activas (M ≥ 4.5)') : 
+            (transService.currentLang() === 'en' ? 'Enable Emergency Push Alerts' : 'Activar Alertas Sísmicas Push')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span>{{ pushService.isSubscribed() ? (transService.currentLang() === 'en' ? 'Alerts ON' : 'Alertas ON') : (transService.currentLang() === 'en' ? 'Alerts' : 'Alertas') }}</span>
         </button>
 
         <button
@@ -285,6 +301,12 @@ import { TranslationService } from '../../services/translation.service';
       border-color: var(--accent-cyan);
       color: var(--accent-cyan);
     }
+    .btn-push-alert.active {
+      background: rgba(16, 185, 129, 0.18) !important;
+      border-color: #10b981 !important;
+      color: #10b981 !important;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+    }
 
     .btn-icon {
       width: 36px;
@@ -455,9 +477,14 @@ export class HeaderComponent {
   earthquakeService = inject(EarthquakeService);
   wsService = inject(WebSocketService);
   transService = inject(TranslationService);
+  pushService = inject(PushNotificationService);
 
   @Output() toggleFilterDrawer = new EventEmitter<void>();
   @Output() openAnalytics = new EventEmitter<void>();
+
+  async togglePush() {
+    await this.pushService.toggleSubscription();
+  }
 
   getMagClass(mag: number): string {
     if (mag < 3.5) return 'mag-low';
