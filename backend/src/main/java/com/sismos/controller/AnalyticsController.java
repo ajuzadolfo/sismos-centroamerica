@@ -18,9 +18,17 @@ import java.util.*;
 public class AnalyticsController {
 
     private final SeismicEventRepository seismicEventRepository;
+    private final java.util.Optional<com.sismos.service.BigQueryAnalyticsService> bigQueryAnalyticsService;
 
     @GetMapping("/regional-summary")
     public ResponseEntity<Map<String, Object>> getRegionalSummary() {
+        if (bigQueryAnalyticsService.isPresent()) {
+            var bqResult = bigQueryAnalyticsService.get().getHistoricalRegionalSummary();
+            if (bqResult.isPresent()) {
+                return ResponseEntity.ok(bqResult.get());
+            }
+        }
+
         Instant since = Instant.now().minus(30, ChronoUnit.DAYS);
         List<SeismicEvent> events = seismicEventRepository.findByTimeAfterOrderByTimeDesc(since);
 

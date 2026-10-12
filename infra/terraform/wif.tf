@@ -49,7 +49,10 @@ locals {
     "roles/iam.serviceAccountUser",
     "roles/secretmanager.secretAccessor",
     "roles/cloudsql.client",
-    "roles/cloudsql.viewer"
+    "roles/cloudsql.viewer",
+    "roles/pubsub.publisher",
+    "roles/bigquery.dataEditor",
+    "roles/bigquery.jobUser"
   ]
 }
 

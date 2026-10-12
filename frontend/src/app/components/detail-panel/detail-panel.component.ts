@@ -118,7 +118,7 @@ import { environment } from '../../../environments/environment';
           @if (getShakeMapData(event); as shake) {
             <div class="shakemap-section">
               <div class="shakemap-header">
-                <span class="shakemap-title">{{ transService.currentLang() === 'en' ? 'SHAKEMAP // MMI INTENSITY' : 'SHAKEMAP // INTENSIDAD MMI' }}</span>
+                <span class="shakemap-title">{{ transService.currentLang() === 'en' ? 'ESTIMATED SHAKEMAP // MMI' : 'SHAKEMAP ESTIMADO // MMI' }}</span>
                 <span class="mmi-badge" [style.background-color]="shake.epicentralColor + '20'" [style.border-color]="shake.epicentralColor" [style.color]="shake.epicentralColor">
                   {{ shake.epicentralLabel }}
                 </span>
@@ -134,6 +134,9 @@ import { environment } from '../../../environments/environment';
                   }
                 </div>
               }
+              <div class="shakemap-disclaimer">
+                {{ transService.currentLang() === 'en' ? 'Estimated via attenuation model (GMPE). Not an official observatory source.' : 'Estimación por modelo de atenuación (GMPE). No sustituye a fuentes oficiales.' }}
+              </div>
             </div>
           }
 
@@ -473,6 +476,14 @@ import { environment } from '../../../environments/environment';
       font-family: var(--font-mono);
       font-weight: 600;
       font-size: 0.68rem;
+    }
+
+    .shakemap-disclaimer {
+      margin-top: 8px;
+      font-size: 0.62rem;
+      color: #64748b;
+      font-style: italic;
+      line-height: 1.35;
     }
 
     .btn-ai-analysis {

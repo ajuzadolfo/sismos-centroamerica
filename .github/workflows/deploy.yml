@@ -196,6 +196,14 @@ jobs:
             --clear-secrets \
             --quiet || true
 
+          GEMINI_SECRET_ARG=""
+          if gcloud secrets describe gemini-api-key --project="${{ env.PROJECT_ID }}" >/dev/null 2>&1; then
+            echo "Secreto gemini-api-key detectado en Secret Manager. Inyectando en Cloud Run..."
+            GEMINI_SECRET_ARG="--set-secrets=GEMINI_API_KEY=gemini-api-key:latest"
+          else
+            echo "Secreto gemini-api-key no presente. Operando con generador geocientífico de respaldo."
+          fi
+
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
             --project="${{ env.PROJECT_ID }}" \
             --image="${{ env.ARTIFACT_REPO }}/backend:${{ github.sha }}" \
@@ -213,6 +221,7 @@ jobs:
             --subnet="${{ env.VPC_SUBNET }}" \
             --vpc-egress=private-ranges-only \
             --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_IP}:5432/sismos_db,SPRING_DATASOURCE_USERNAME=sismos_app,SPRING_DATASOURCE_PASSWORD=${DB_PASS}" \
+            $GEMINI_SECRET_ARG \
             --quiet
 
       # 5. Obtener URL pública del Backend
