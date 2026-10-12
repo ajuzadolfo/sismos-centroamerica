@@ -17,10 +17,30 @@ import { environment } from '../../../environments/environment';
             <span class="analytics-icon">📊</span>
             <div>
               <h3>{{ transService.currentLang() === 'en' ? 'Central America Geodynamic Analytics' : 'Analítica Geodinámica de Centroamérica' }}</h3>
-              <span class="sub-badge">{{ transService.currentLang() === 'en' ? 'PostGIS Analytics & Modified Omori Law' : 'Analítica PostGIS y Ley de Omori Modificada' }}</span>
+              <span class="sub-badge">
+                {{ activeTimeframe() === '40y' ? 
+                    (transService.currentLang() === 'en' ? 'BigQuery GIS Analytics (1980 - 2026 // 40+ Years)' : 'BigQuery GIS Analytics (1980 - 2026 // 40+ Años)') : 
+                    (transService.currentLang() === 'en' ? 'PostGIS Analytics (Real-time // 30 Days)' : 'PostGIS Analytics (Tiempo Real // 30 Días)') }}
+              </span>
             </div>
           </div>
           <button class="close-btn" (click)="close.emit()">&times;</button>
+        </div>
+
+        <!-- Selector de Período Histórico (BigQuery GIS vs PostGIS) -->
+        <div class="timeframe-bar">
+          <button 
+            class="timeframe-btn" 
+            [class.active]="activeTimeframe() === '40y'" 
+            (click)="setTimeframe('40y')">
+            🏛️ {{ transService.currentLang() === 'en' ? '40+ Years (BigQuery GIS Data Lake)' : '40+ Años (Data Lake BigQuery GIS)' }}
+          </button>
+          <button 
+            class="timeframe-btn" 
+            [class.active]="activeTimeframe() === '30d'" 
+            (click)="setTimeframe('30d')">
+            ⏱️ {{ transService.currentLang() === 'en' ? 'Last 30 Days (PostGIS)' : 'Últimos 30 Días (PostGIS)' }}
+          </button>
         </div>
 
         @if (loading()) {
@@ -32,7 +52,14 @@ import { environment } from '../../../environments/environment';
           <div class="modal-content">
             <!-- 1. Distribución por País -->
             <div class="section-card">
-              <h4>{{ transService.currentLang() === 'en' ? 'Seismic activity by Country (Last 30 Days)' : 'Sismicidad por País (Últimos 30 Días)' }}</h4>
+              <h4>
+                {{ activeTimeframe() === '40y' ? 
+                    (transService.currentLang() === 'en' ? 'Historical Seismic Activity by Country (40+ Years)' : 'Sismicidad Histórica por País (40+ Años - BigQuery GIS)') : 
+                    (transService.currentLang() === 'en' ? 'Recent Seismic Activity by Country (Last 30 Days)' : 'Sismicidad por País (Últimos 30 Días)') }}
+                @if (summary()?.totalEventsAnalyzed; as totalEv) {
+                  <span class="total-tag">({{ totalEv | number }} {{ transService.currentLang() === 'en' ? 'events' : 'sismos' }})</span>
+                }
+              </h4>
               <div class="country-bars">
                 @for (item of getCountryList(); track item.name) {
                   <div class="bar-row">
@@ -423,6 +450,53 @@ import { environment } from '../../../environments/environment';
       color: #ff9100;
       margin-top: 4px;
     }
+
+    .timeframe-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 5px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .timeframe-btn {
+      flex: 1;
+      padding: 9px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .timeframe-btn:hover {
+      color: #f1f5f9;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .timeframe-btn.active {
+      background: rgba(0, 240, 255, 0.16);
+      border-color: rgba(0, 240, 255, 0.55);
+      color: #00f0ff;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.22);
+    }
+
+    .total-tag {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #00f0ff;
+      margin-left: 8px;
+      font-family: var(--font-mono);
+    }
   `]
 })
 export class AnalyticsModalComponent implements OnInit {
@@ -431,17 +505,24 @@ export class AnalyticsModalComponent implements OnInit {
   private http = inject(HttpClient);
   transService = inject(TranslationService);
 
+  readonly activeTimeframe = signal<'40y' | '30d'>('40y');
   readonly loading = signal<boolean>(true);
   readonly summary = signal<any>(null);
   readonly forecast = signal<any>(null);
 
   ngOnInit() {
-    this.loadData();
+    this.loadData(this.activeTimeframe());
   }
 
-  loadData() {
+  setTimeframe(tf: '40y' | '30d') {
+    if (this.activeTimeframe() === tf) return;
+    this.activeTimeframe.set(tf);
+    this.loadData(tf);
+  }
+
+  loadData(tf: '40y' | '30d' = '40y') {
     this.loading.set(true);
-    this.http.get<any>(`${environment.apiUrl}/analytics/regional-summary`).subscribe({
+    this.http.get<any>(`${environment.apiUrl}/analytics/regional-summary?timeframe=${tf}`).subscribe({
       next: (data) => {
         this.summary.set(data);
         this.loadForecast();
@@ -470,8 +551,10 @@ export class AnalyticsModalComponent implements OnInit {
     const dist = this.summary()?.countryDistribution;
     if (!dist) return [];
 
-    const total = this.summary()?.totalEventsAnalyzed || 1;
     const isEn = this.transService.currentLang() === 'en';
+    const counts = Object.values(dist).map(v => Number(v) || 0);
+    const maxVal = Math.max(1, ...counts);
+
     return Object.keys(dist)
       .filter(k => k !== 'Otros / Océano' || dist[k] > 0)
       .map(k => {
@@ -480,10 +563,11 @@ export class AnalyticsModalComponent implements OnInit {
           if (k === 'Panamá') displayName = 'Panama';
           else if (k === 'Otros / Océano') displayName = 'Other / Offshore';
         }
+        const val = Number(dist[k]) || 0;
         return {
           name: displayName,
-          count: dist[k],
-          percentage: Math.min(100, Math.round((dist[k] / total) * 100) * 2.5) // Escala visual proporcional
+          count: val,
+          percentage: Math.min(100, Math.round((val / maxVal) * 100))
         };
       })
       .sort((a, b) => b.count - a.count);
