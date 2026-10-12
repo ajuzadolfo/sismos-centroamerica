@@ -231,18 +231,18 @@ const ES_TRANSLATIONS: Translations = {
       {
         badge: 'ESTACIONES SISMOLÓGICAS',
         title: 'Red Sísmica en Tiempo Real',
-        subtitle: 'Ingesta de datos mediante WebSockets de baja latencia',
-        desc: 'Conexión en streaming con sensores USGS, INETER, INSIVUMEH y OVSICORI. Detección automática y alerta visual y acústica en menos de 200 ms tras su publicación.',
-        metricVal: '< 200 ms',
-        metricLbl: 'Latencia de Distribución'
+        subtitle: 'Ingesta continua del catálogo USGS y difusión por WebSocket',
+        desc: 'El backend consulta el catálogo FDSN de USGS cada 60 segundos, persiste los eventos en PostGIS y los difunde al instante a todos los navegadores conectados mediante WebSocket (STOMP), con alerta visual y acústica.',
+        metricVal: '60 s',
+        metricLbl: 'Ciclo de Ingesta'
       },
       {
         badge: 'ARQUITECTURA SERVERLESS',
         title: 'Nube Distribuida de Alta Resiliencia',
         subtitle: 'Diseñado sobre Google Cloud Platform con Cloud Run',
-        desc: 'Escalabilidad elástica automática. Desde calma tectónica hasta enjambres de alta intensidad, el backend en Java 21 Spring Boot y Cloud SQL mantiene 99.99% de disponibilidad.',
-        metricVal: '99.99%',
-        metricLbl: 'Disponibilidad Garantizada'
+        desc: 'Escalado automático en Cloud Run: desde la calma tectónica hasta enjambres sísmicos, el backend Java 21 + Spring Boot se ajusta a la demanda y se conecta a Cloud SQL por red privada (Direct VPC Egress), sin claves en el pipeline.',
+        metricVal: '0 → N',
+        metricLbl: 'Instancias bajo Demanda'
       },
       {
         badge: 'CIENCIA PARTICIPATIVA',
@@ -375,18 +375,18 @@ const EN_TRANSLATIONS: Translations = {
       {
         badge: 'SEISMIC OBSERVATORIES',
         title: 'Real-Time Seismic Network',
-        subtitle: 'Low-latency data streaming via WebSockets',
-        desc: 'Live streaming connection to USGS, INETER, INSIVUMEH, and OVSICORI sensors. Instant visual and acoustic alerting under 200 ms upon event publication.',
-        metricVal: '< 200 ms',
-        metricLbl: 'Distribution Latency'
+        subtitle: 'Continuous USGS catalog ingestion with WebSocket broadcast',
+        desc: 'The backend polls the USGS FDSN catalog every 60 seconds, stores events in PostGIS and instantly pushes them to every connected browser over WebSocket (STOMP), with visual and acoustic alerts.',
+        metricVal: '60 s',
+        metricLbl: 'Ingestion Cycle'
       },
       {
         badge: 'SERVERLESS ARCHITECTURE',
         title: 'Resilient Distributed Cloud',
         subtitle: 'Architected on Google Cloud Platform with Cloud Run',
-        desc: 'Elastic autoscaling capability. From seismic quiescence to high-density swarms, our Java 21 Spring Boot and Cloud SQL backend guarantees 99.99% uptime.',
-        metricVal: '99.99%',
-        metricLbl: 'Guaranteed Availability'
+        desc: 'Cloud Run autoscaling: from seismic quiescence to earthquake swarms, the Java 21 + Spring Boot backend scales with demand and reaches Cloud SQL over a private network (Direct VPC Egress), with a keyless pipeline.',
+        metricVal: '0 → N',
+        metricLbl: 'On-Demand Instances'
       },
       {
         badge: 'COMMUNITY SCIENCE',

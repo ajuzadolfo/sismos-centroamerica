@@ -17,7 +17,7 @@ import { environment } from '../../../environments/environment';
             <span class="analytics-icon">📊</span>
             <div>
               <h3>{{ transService.currentLang() === 'en' ? 'Central America Geodynamic Analytics' : 'Analítica Geodinámica de Centroamérica' }}</h3>
-              <span class="sub-badge">{{ transService.currentLang() === 'en' ? 'BigQuery GIS & Omori ML Models' : 'Modelos BigQuery GIS y Ley de Omori' }}</span>
+              <span class="sub-badge">{{ transService.currentLang() === 'en' ? 'PostGIS Analytics & Modified Omori Law' : 'Analítica PostGIS y Ley de Omori Modificada' }}</span>
             </div>
           </div>
           <button class="close-btn" (click)="close.emit()">&times;</button>
@@ -93,7 +93,7 @@ import { environment } from '../../../environments/environment';
             @if (forecast(); as fc) {
               <div class="section-card omori-card">
                 <div class="omori-header">
-                  <span class="omori-badge">BIGQUERY ML // OMORI DECAY</span>
+                  <span class="omori-badge">OMORI-UTSU // AFTERSHOCK DECAY</span>
                   <h4>{{ transService.currentLang() === 'en' ? 'Aftershock Forecast (Modified Omori Law)' : 'Pronóstico de Réplicas (Ley Modificada de Omori)' }}</h4>
                 </div>
                 <p class="mainshock-ref">
