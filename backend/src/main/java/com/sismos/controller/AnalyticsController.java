@@ -21,11 +21,14 @@ public class AnalyticsController {
     private final java.util.Optional<com.sismos.service.BigQueryAnalyticsService> bigQueryAnalyticsService;
 
     @GetMapping("/regional-summary")
-    public ResponseEntity<Map<String, Object>> getRegionalSummary() {
-        if (bigQueryAnalyticsService.isPresent()) {
-            var bqResult = bigQueryAnalyticsService.get().getHistoricalRegionalSummary();
-            if (bqResult.isPresent()) {
-                return ResponseEntity.ok(bqResult.get());
+    public ResponseEntity<Map<String, Object>> getRegionalSummary(
+            @org.springframework.web.bind.annotation.RequestParam(name = "timeframe", defaultValue = "30d") String timeframe) {
+        if ("40y".equalsIgnoreCase(timeframe) || "historical".equalsIgnoreCase(timeframe)) {
+            if (bigQueryAnalyticsService.isPresent()) {
+                var bqResult = bigQueryAnalyticsService.get().getHistoricalRegionalSummary();
+                if (bqResult.isPresent()) {
+                    return ResponseEntity.ok(bqResult.get());
+                }
             }
         }
 

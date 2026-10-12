@@ -220,7 +220,7 @@ jobs:
             --network="${{ env.VPC_NETWORK }}" \
             --subnet="${{ env.VPC_SUBNET }}" \
             --vpc-egress=private-ranges-only \
-            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_IP}:5432/sismos_db,SPRING_DATASOURCE_USERNAME=sismos_app,SPRING_DATASOURCE_PASSWORD=${DB_PASS}" \
+            --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_IP}:5432/sismos_db,SPRING_DATASOURCE_USERNAME=sismos_app,SPRING_DATASOURCE_PASSWORD=${DB_PASS},SPRING_CLOUD_GCP_BIGQUERY_ENABLED=true,SPRING_CLOUD_GCP_PUBSUB_ENABLED=true,PROJECT_ID=${{ env.PROJECT_ID }}" \
             $GEMINI_SECRET_ARG \
             --quiet
 

@@ -11,7 +11,7 @@ import java.util.*;
 @Slf4j
 public class BigQueryAnalyticsService {
 
-    @Value("${spring.cloud.gcp.bigquery.enabled:false}")
+    @Value("${spring.cloud.gcp.bigquery.enabled:true}")
     private boolean bigQueryEnabled;
 
     @Value("${spring.cloud.gcp.project-id:${PROJECT_ID:sismos-centroamerica-prod}}")
@@ -47,36 +47,65 @@ public class BigQueryAnalyticsService {
 
         String query = """
             SELECT
-              country_code,
-              COUNT(1) AS event_count,
-              ROUND(AVG(magnitude), 2) AS avg_magnitude,
-              MAX(magnitude) AS max_magnitude
+              COUNT(1) AS total_events,
+              COUNTIF(country_code = 'GT') AS gt_count,
+              COUNTIF(country_code = 'SV') AS sv_count,
+              COUNTIF(country_code = 'HN') AS hn_count,
+              COUNTIF(country_code = 'NI') AS ni_count,
+              COUNTIF(country_code = 'CR') AS cr_count,
+              COUNTIF(country_code = 'PA') AS pa_count,
+              COUNTIF(country_code = 'OC' OR country_code IS NULL) AS oc_count,
+              COUNTIF(magnitude < 3.5) AS mag_menor,
+              COUNTIF(magnitude >= 3.5 AND magnitude < 4.5) AS mag_moderado,
+              COUNTIF(magnitude >= 4.5 AND magnitude < 6.0) AS mag_fuerte,
+              COUNTIF(magnitude >= 6.0) AS mag_mayor,
+              COUNTIF(depth_km < 30) AS depth_shallow,
+              COUNTIF(depth_km >= 30 AND depth_km <= 70) AS depth_intermediate,
+              COUNTIF(depth_km > 70) AS depth_deep
             FROM `sismos_analytics.earthquake_catalog`
-            GROUP BY country_code
-            ORDER BY event_count DESC
             """;
 
         try {
             QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query).build();
             TableResult result = client.query(queryConfig);
 
-            Map<String, Integer> countryDistribution = new LinkedHashMap<>();
-            long total = 0;
+            Iterator<FieldValueList> iterator = result.iterateAll().iterator();
+            if (!iterator.hasNext()) return Optional.empty();
 
-            for (FieldValueList row : result.iterateAll()) {
-                String code = row.get("country_code").isNull() ? "OC" : row.get("country_code").getStringValue();
-                String countryName = mapCountryCode(code);
-                long count = row.get("event_count").getLongValue();
-                countryDistribution.put(countryName, (int) count);
-                total += count;
-            }
-
+            FieldValueList row = iterator.next();
+            long total = row.get("total_events").getLongValue();
             if (total == 0) return Optional.empty();
+
+            Map<String, Integer> countryDistribution = new LinkedHashMap<>();
+            countryDistribution.put("Guatemala", (int) row.get("gt_count").getLongValue());
+            countryDistribution.put("El Salvador", (int) row.get("sv_count").getLongValue());
+            countryDistribution.put("Honduras", (int) row.get("hn_count").getLongValue());
+            countryDistribution.put("Nicaragua", (int) row.get("ni_count").getLongValue());
+            countryDistribution.put("Costa Rica", (int) row.get("cr_count").getLongValue());
+            countryDistribution.put("Panamá", (int) row.get("pa_count").getLongValue());
+            countryDistribution.put("Otros / Océano", (int) row.get("oc_count").getLongValue());
+
+            Map<String, Integer> magDistribution = new LinkedHashMap<>();
+            magDistribution.put("menor", (int) row.get("mag_menor").getLongValue());
+            magDistribution.put("moderado", (int) row.get("mag_moderado").getLongValue());
+            magDistribution.put("fuerte", (int) row.get("mag_fuerte").getLongValue());
+            magDistribution.put("mayor", (int) row.get("mag_mayor").getLongValue());
+
+            Map<String, Integer> depthDistribution = new LinkedHashMap<>();
+            depthDistribution.put("shallowUnder30Km", (int) row.get("depth_shallow").getLongValue());
+            depthDistribution.put("intermediate30to70Km", (int) row.get("depth_intermediate").getLongValue());
+            depthDistribution.put("deepOver70Km", (int) row.get("depth_deep").getLongValue());
 
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("dataSource", "BigQuery GIS (Catálogo Histórico 40+ Años)");
+            summary.put("timeframe", "40y");
+            summary.put("analysisWindowDays", 16800);
             summary.put("totalEventsAnalyzed", total);
             summary.put("countryDistribution", countryDistribution);
+            summary.put("magnitudeDistribution", magDistribution);
+            summary.put("depthDistribution", depthDistribution);
+            summary.put("timestamp", java.time.Instant.now().toString());
+
             return Optional.of(summary);
         } catch (Exception e) {
             log.warn("[BigQuery GIS] Error ejecutando consulta analítica histórica: {}", e.getMessage());

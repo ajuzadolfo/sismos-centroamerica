@@ -23,7 +23,7 @@ public class DefaultSeismicMessageBroker implements SeismicMessageBroker {
     private final Optional<GcpPubSubPublisher> gcpPubSubPublisher;
     private final ObjectMapper objectMapper;
 
-    @Value("${spring.cloud.gcp.pubsub.enabled:false}")
+    @Value("${spring.cloud.gcp.pubsub.enabled:true}")
     private boolean gcpPubSubEnabled;
 
     @Value("${app.messaging.broker:websocket}")

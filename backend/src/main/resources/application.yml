@@ -34,6 +34,14 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
 
+  cloud:
+    gcp:
+      project-id: ${PROJECT_ID:sismos-centroamerica-prod}
+      bigquery:
+        enabled: ${SPRING_CLOUD_GCP_BIGQUERY_ENABLED:true}
+      pubsub:
+        enabled: ${SPRING_CLOUD_GCP_PUBSUB_ENABLED:true}
+
 # Configuración del cuadrante de monitorización sísmica en Centroamérica
 sismos:
   region:
@@ -49,3 +57,10 @@ sismos:
 gemini:
   api:
     key: ${GEMINI_API_KEY:}
+
+vapid:
+  public:
+    key: ${VAPID_PUBLIC_KEY:BCLDJ6-o41_0doRq_jjiaPmmMVrDAkNVMeckn-hwgdzPA6TsqRABI45mo_aKzFyXbPk37q0YurOxyODttS5ElF4}
+  private:
+    key: ${VAPID_PRIVATE_KEY:hc5N0RBCs5pP2P_k9CMsWEDrlv_TZlFl6HzNttbw3aQ}
+  subject: ${VAPID_SUBJECT:mailto:soporte@foznasolutions.com}
