@@ -1,7 +1,11 @@
 package com.sismos.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sismos.model.dto.SeismicIntelligenceReportDto;
+import com.sismos.model.entity.SeismicAiReport;
 import com.sismos.model.entity.SeismicEvent;
+import com.sismos.repository.SeismicAiReportRepository;
 import com.sismos.repository.SeismicEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GeminiIntelligenceService {
 
     private final SeismicEventRepository seismicEventRepository;
+    private final SeismicAiReportRepository seismicAiReportRepository;
+    private final ObjectMapper objectMapper;
     private final RestClient restClient = RestClient.builder().build();
 
     @Value("${gemini.api.key:#{null}}")
@@ -30,6 +36,7 @@ public class GeminiIntelligenceService {
     private final Map<String, SeismicIntelligenceReportDto> reportCache = new ConcurrentHashMap<>();
 
     public SeismicIntelligenceReportDto generateReport(String eventId) {
+        // 1. Caché L1 en memoria
         if (reportCache.containsKey(eventId)) {
             return reportCache.get(eventId);
         }
@@ -37,6 +44,26 @@ public class GeminiIntelligenceService {
         SeismicEvent event = seismicEventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Sismo no encontrado con ID: " + eventId));
 
+        // 2. Caché L2 en PostgreSQL (seismic_ai_reports)
+        var existingReport = seismicAiReportRepository.findById(eventId);
+        if (existingReport.isPresent()) {
+            SeismicAiReport dbEntity = existingReport.get();
+            SeismicIntelligenceReportDto cached = SeismicIntelligenceReportDto.builder()
+                    .eventId(dbEntity.getEventId())
+                    .title(event.getTitle())
+                    .modelUsed(dbEntity.getModelUsed())
+                    .executiveSummary(dbEntity.getExecutiveSummary())
+                    .tectonicContext(dbEntity.getTectonicContext())
+                    .tsunamiRiskAssessment(dbEntity.getTsunamiRisk())
+                    .safetyRecommendations(deserializeRecommendations(dbEntity.getSafetyRecommendations()))
+                    .estimatedPeakIntensity(dbEntity.getEstimatedPeakIntensity())
+                    .generatedAt(dbEntity.getGeneratedAt() != null ? dbEntity.getGeneratedAt().toString() : Instant.now().toString())
+                    .build();
+            reportCache.put(eventId, cached);
+            return cached;
+        }
+
+        // 3. Generación en vivo (Gemini 2.5 Flash o Fallback geocientífico)
         SeismicIntelligenceReportDto report;
         if (geminiApiKey != null && !geminiApiKey.isBlank()) {
             try {
@@ -47,6 +74,23 @@ public class GeminiIntelligenceService {
             }
         } else {
             report = generateFallbackReport(event);
+        }
+
+        // 4. Persistir en base de datos para no consumir tokens repetidos
+        try {
+            SeismicAiReport entityToSave = SeismicAiReport.builder()
+                    .eventId(report.getEventId())
+                    .modelUsed(report.getModelUsed())
+                    .executiveSummary(report.getExecutiveSummary())
+                    .tectonicContext(report.getTectonicContext())
+                    .tsunamiRisk(report.getTsunamiRiskAssessment())
+                    .safetyRecommendations(serializeRecommendations(report.getSafetyRecommendations()))
+                    .estimatedPeakIntensity(report.getEstimatedPeakIntensity())
+                    .generatedAt(Instant.now())
+                    .build();
+            seismicAiReportRepository.save(entityToSave);
+        } catch (Exception e) {
+            log.warn("No se pudo persistir el reporte de IA en base de datos: {}", e.getMessage());
         }
 
         reportCache.put(eventId, report);
@@ -145,10 +189,14 @@ public class GeminiIntelligenceService {
             summary = String.format("Movimiento telúrico menor a moderado (M %.1f) a %.1f km de profundidad. Típico de la constante dinámica geológica centroamericana, perceptible principalmente en pisos altos y en reposo.", mag, depth);
         }
 
+        String model = (geminiApiKey != null && !geminiApiKey.isBlank())
+                ? "gemini-2.5-flash-fallback"
+                : "geoscientific-rules-engine";
+
         return SeismicIntelligenceReportDto.builder()
                 .eventId(event.getId())
                 .title(event.getTitle())
-                .modelUsed("gemini-2.5-flash")
+                .modelUsed(model)
                 .executiveSummary(summary)
                 .tectonicContext(determineTectonicContext(event))
                 .tsunamiRiskAssessment(determineTsunamiRisk(event))
@@ -213,5 +261,23 @@ public class GeminiIntelligenceService {
         if (mag >= 4.5) return "MMI V (Moderado)";
         if (mag >= 3.5) return "MMI IV (Ligero)";
         return "MMI II - III (Débil)";
+    }
+
+    private String serializeRecommendations(List<String> list) {
+        if (list == null || list.isEmpty()) return "[]";
+        try {
+            return objectMapper.writeValueAsString(list);
+        } catch (Exception e) {
+            return String.join("||", list);
+        }
+    }
+
+    private List<String> deserializeRecommendations(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            return List.of(json.split("\\|\\|"));
+        }
     }
 }

@@ -45,3 +45,7 @@ sismos:
     cron-rate-ms: 60000 # Cada 60 segundos
     usgs-cdn-url: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson"
     usgs-fdsn-base-url: "https://earthquake.usgs.gov/fdsnws/event/1/query"
+
+gemini:
+  api:
+    key: ${GEMINI_API_KEY:}

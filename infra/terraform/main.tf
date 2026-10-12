@@ -28,6 +28,7 @@ locals {
     "artifactregistry.googleapis.com",
     "secretmanager.googleapis.com",
     "pubsub.googleapis.com",
+    "bigquery.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com"
   ]
