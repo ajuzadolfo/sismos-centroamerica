@@ -64,7 +64,7 @@ public class BigQueryAnalyticsService {
               COUNTIF(depth_km < 30) AS depth_shallow,
               COUNTIF(depth_km >= 30 AND depth_km <= 70) AS depth_intermediate,
               COUNTIF(depth_km > 70) AS depth_deep
-            FROM `sismos_analytics.earthquake_catalog`
+            FROM `sismos_analytics.earthquake_catalog_latest`
             """;
 
         try {
