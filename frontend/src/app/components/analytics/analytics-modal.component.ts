@@ -17,7 +17,12 @@ import { environment } from '../../../environments/environment';
             <span class="analytics-icon">📊</span>
             <div>
               <h3>{{ transService.currentLang() === 'en' ? 'Central America Geodynamic Analytics' : 'Analítica Geodinámica de Centroamérica' }}</h3>
-              <span class="sub-badge">{{ getBadgeText() }}</span>
+              <span class="sub-badge">
+                {{ getBadgeText() }}
+                @if (summary()?.queryLatencyMs !== undefined && summary()?.queryLatencyMs !== null) {
+                  <span class="latency-badge">({{ summary().queryLatencyMs }} ms)</span>
+                }
+              </span>
             </div>
           </div>
           <button class="close-btn" (click)="close.emit()">&times;</button>

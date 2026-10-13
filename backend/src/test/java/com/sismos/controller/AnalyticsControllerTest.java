@@ -1,26 +1,17 @@
 package com.sismos.controller;
 
-import com.sismos.model.entity.SeismicEvent;
-import com.sismos.repository.SeismicEventRepository;
 import com.sismos.service.BigQueryAnalyticsService;
+import com.sismos.service.PostGisAnalyticsService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -33,7 +24,7 @@ class AnalyticsControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private SeismicEventRepository seismicEventRepository;
+    private PostGisAnalyticsService postGisAnalyticsService;
 
     @MockBean
     private BigQueryAnalyticsService bigQueryAnalyticsService;
@@ -41,13 +32,16 @@ class AnalyticsControllerTest {
     @Test
     @DisplayName("GET /api/v1/analytics/regional-summary con timeframe=30d debe retornar métricas de PostGIS")
     void shouldReturnRegionalSummaryFor30d() throws Exception {
-        com.sismos.repository.projection.RegionalSummaryRow row = org.mockito.Mockito.mock(com.sismos.repository.projection.RegionalSummaryRow.class);
-        when(row.getCountryLabel()).thenReturn("Nicaragua");
-        when(row.getTotalCount()).thenReturn(1L);
-        when(row.getMagFuerte()).thenReturn(1L);
-        when(row.getSomeros()).thenReturn(1L);
+        Map<String, Object> mockSummary = Map.of(
+                "dataSource", "POSTGIS",
+                "timeframe", "30d",
+                "totalEventsAnalyzed", 1,
+                "countryDistribution", Map.of("Nicaragua", 1),
+                "magnitudeDistribution", Map.of("fuerte", 1),
+                "queryLatencyMs", 12L
+        );
 
-        when(seismicEventRepository.getRegionalSummaryAggregation(any())).thenReturn(List.of(row));
+        when(postGisAnalyticsService.getRecentRegionalSummary()).thenReturn(mockSummary);
 
         mockMvc.perform(get("/api/v1/analytics/regional-summary?timeframe=30d"))
                 .andExpect(status().isOk())
@@ -66,7 +60,8 @@ class AnalyticsControllerTest {
                 "timeframe", "40y",
                 "totalEventsAnalyzed", 44800,
                 "windowStart", "1980-01-01 00:00:00",
-                "windowEnd", "2026-10-12 18:00:00"
+                "windowEnd", "2026-10-12 18:00:00",
+                "queryLatencyMs", 850L
         );
         when(bigQueryAnalyticsService.getHistoricalRegionalSummary()).thenReturn(Optional.of(mockSummary));
 
@@ -98,22 +93,20 @@ class AnalyticsControllerTest {
     @Test
     @DisplayName("GET /api/v1/analytics/aftershock-forecast debe retornar pronóstico de Reasenberg-Jones")
     void shouldReturnAftershockForecast() throws Exception {
-        GeometryFactory factory = new GeometryFactory(new PrecisionModel(), 4326);
-        Point point = factory.createPoint(new Coordinate(-80.5, 7.5));
-        point.setSRID(4326);
+        Map<String, Object> mockForecast = Map.of(
+                "mainshockId", "us7000major",
+                "model", "Reasenberg-Jones 1989 (parámetros genéricos)",
+                "parameters", Map.of("a", -1.67),
+                "forecastWindow24h", Map.of(
+                        "expectedCountM4", 15.2,
+                        "expectedCountM5", 2.1,
+                        "probabilityM5Plus", "88%"
+                ),
+                "disclaimer", "Modelo estadístico genérico.",
+                "queryLatencyMs", 5L
+        );
 
-        SeismicEvent event = SeismicEvent.builder()
-                .id("us7000major")
-                .title("M 7.2 - Costa Rica")
-                .time(Instant.now().minusSeconds(3600 * 12))
-                .updatedAt(Instant.now())
-                .magnitude(BigDecimal.valueOf(7.2))
-                .depth(BigDecimal.valueOf(15.0))
-                .status("REVIEWED")
-                .geom(point)
-                .build();
-
-        when(seismicEventRepository.findByTimeAfterOrderByTimeDesc(any())).thenReturn(List.of(event));
+        when(postGisAnalyticsService.getAftershockForecast()).thenReturn(mockForecast);
 
         mockMvc.perform(get("/api/v1/analytics/aftershock-forecast"))
                 .andExpect(status().isOk())

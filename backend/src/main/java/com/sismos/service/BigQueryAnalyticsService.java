@@ -35,6 +35,7 @@ public class BigQueryAnalyticsService {
         return bigQueryEnabled;
     }
 
+    @org.springframework.cache.annotation.Cacheable(value = "historicalSummary", unless = "#result == null || !#result.isPresent()")
     public Optional<Map<String, Object>> getHistoricalRegionalSummary() {
         if (!bigQueryEnabled) {
             return Optional.empty();
@@ -45,6 +46,7 @@ public class BigQueryAnalyticsService {
             return Optional.empty();
         }
 
+        long startNs = System.nanoTime();
         String query = """
             SELECT
               COUNT(1) AS total_events,
@@ -68,7 +70,10 @@ public class BigQueryAnalyticsService {
             """;
 
         try {
-            QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query).build();
+            QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query)
+                    .setUseQueryCache(true)
+                    .setMaximumBytesBilled(100L * 1024L * 1024L) // 100 MB de salvaguarda
+                    .build();
             TableResult result = client.query(queryConfig);
 
             Iterator<FieldValueList> iterator = result.iterateAll().iterator();
@@ -101,6 +106,8 @@ public class BigQueryAnalyticsService {
             depthDistribution.put("intermediate30to70Km", (int) row.get("depth_intermediate").getLongValue());
             depthDistribution.put("deepOver70Km", (int) row.get("depth_deep").getLongValue());
 
+            long queryLatencyMs = (System.nanoTime() - startNs) / 1_000_000L;
+
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("dataSource", "BIGQUERY");
             summary.put("timeframe", "40y");
@@ -110,6 +117,7 @@ public class BigQueryAnalyticsService {
             summary.put("countryDistribution", countryDistribution);
             summary.put("magnitudeDistribution", magDistribution);
             summary.put("depthDistribution", depthDistribution);
+            summary.put("queryLatencyMs", queryLatencyMs);
             summary.put("timestamp", java.time.Instant.now().toString());
 
             return Optional.of(summary);
