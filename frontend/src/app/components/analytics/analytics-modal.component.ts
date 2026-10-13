@@ -118,12 +118,12 @@ import { environment } from '../../../environments/environment';
               </div>
             </div>
 
-            <!-- 3. Modelo Predictivo de Réplicas (Ley de Omori) -->
+            <!-- 3. Modelo Predictivo de Réplicas (Reasenberg & Jones 1989) -->
             @if (forecast(); as fc) {
               <div class="section-card omori-card">
                 <div class="omori-header">
-                  <span class="omori-badge">OMORI-UTSU // AFTERSHOCK DECAY</span>
-                  <h4>{{ transService.currentLang() === 'en' ? 'Aftershock Forecast (Modified Omori Law)' : 'Pronóstico de Réplicas (Ley Modificada de Omori)' }}</h4>
+                  <span class="omori-badge">REASENBERG &amp; JONES 1989 // AFTERSHOCK DECAY</span>
+                  <h4>{{ transService.currentLang() === 'en' ? 'Aftershock Forecast (Reasenberg & Jones)' : 'Pronóstico Estadístico de Réplicas (Reasenberg & Jones)' }}</h4>
                 </div>
                 <p class="mainshock-ref">
                   {{ transService.currentLang() === 'en' ? 'Event analyzed:' : 'Evento analizado:' }}
@@ -133,17 +133,34 @@ import { environment } from '../../../environments/environment';
                 <div class="forecast-windows">
                   <div class="fc-box">
                     <span class="fc-time">{{ transService.currentLang() === 'en' ? '24 HOURS' : '24 HORAS' }}</span>
-                    <span class="fc-count">~{{ fc.forecastWindow24h?.estimatedAftershockCount }} {{ transService.currentLang() === 'en' ? 'aftershocks' : 'réplicas' }}</span>
+                    <span class="fc-count">~{{ fc.forecastWindow24h?.expectedCountM4 }} {{ transService.currentLang() === 'en' ? 'M≥4 aftershocks' : 'réplicas M≥4' }}</span>
+                    <span class="fc-subcount">~{{ fc.forecastWindow24h?.expectedCountM5 }} {{ transService.currentLang() === 'en' ? 'M≥5' : 'M≥5' }}</span>
                     <span class="fc-prob">{{ transService.currentLang() === 'en' ? 'M≥5 Prob:' : 'Prob. M≥5:' }} {{ fc.forecastWindow24h?.probabilityM5Plus }}</span>
+                    <span class="fc-prob-sub">{{ transService.currentLang() === 'en' ? 'M≥6 Prob:' : 'Prob. M≥6:' }} {{ fc.forecastWindow24h?.probabilityM6Plus }}</span>
                   </div>
                   <div class="fc-box">
                     <span class="fc-time">{{ transService.currentLang() === 'en' ? '48 HOURS' : '48 HORAS' }}</span>
-                    <span class="fc-count">~{{ fc.forecastWindow48h?.estimatedAftershockCount }} {{ transService.currentLang() === 'en' ? 'aftershocks' : 'réplicas' }}</span>
+                    <span class="fc-count">~{{ fc.forecastWindow48h?.expectedCountM4 }} {{ transService.currentLang() === 'en' ? 'M≥4 aftershocks' : 'réplicas M≥4' }}</span>
+                    <span class="fc-subcount">~{{ fc.forecastWindow48h?.expectedCountM5 }} {{ transService.currentLang() === 'en' ? 'M≥5' : 'M≥5' }}</span>
+                    <span class="fc-prob">{{ transService.currentLang() === 'en' ? 'M≥5 Prob:' : 'Prob. M≥5:' }} {{ fc.forecastWindow48h?.probabilityM5Plus }}</span>
+                    <span class="fc-prob-sub">{{ transService.currentLang() === 'en' ? 'M≥6 Prob:' : 'Prob. M≥6:' }} {{ fc.forecastWindow48h?.probabilityM6Plus }}</span>
                   </div>
                   <div class="fc-box">
                     <span class="fc-time">{{ transService.currentLang() === 'en' ? '72 HOURS' : '72 HORAS' }}</span>
-                    <span class="fc-count">~{{ fc.forecastWindow72h?.estimatedAftershockCount }} {{ transService.currentLang() === 'en' ? 'aftershocks' : 'réplicas' }}</span>
+                    <span class="fc-count">~{{ fc.forecastWindow72h?.expectedCountM4 }} {{ transService.currentLang() === 'en' ? 'M≥4 aftershocks' : 'réplicas M≥4' }}</span>
+                    <span class="fc-subcount">~{{ fc.forecastWindow72h?.expectedCountM5 }} {{ transService.currentLang() === 'en' ? 'M≥5' : 'M≥5' }}</span>
+                    <span class="fc-prob">{{ transService.currentLang() === 'en' ? 'M≥5 Prob:' : 'Prob. M≥5:' }} {{ fc.forecastWindow72h?.probabilityM5Plus }}</span>
+                    <span class="fc-prob-sub">{{ transService.currentLang() === 'en' ? 'M≥6 Prob:' : 'Prob. M≥6:' }} {{ fc.forecastWindow72h?.probabilityM6Plus }}</span>
                   </div>
+                </div>
+
+                <div class="forecast-disclaimer">
+                  <span class="disclaimer-icon">ℹ️</span>
+                  <span>
+                    {{ transService.currentLang() === 'en' ? 
+                      'Statistical model (Reasenberg & Jones 1989; a=-1.67, b=0.91, p=1.08, c=0.05 d). Not an official forecast; consult your national seismological agency.' : 
+                      'Modelo estadístico genérico (Reasenberg & Jones 1989; a=-1.67, b=0.91, p=1.08, c=0.05 d). No es un pronóstico oficial; consulte a su agencia sismológica nacional.' }}
+                  </span>
                 </div>
               </div>
             }
@@ -451,6 +468,39 @@ import { environment } from '../../../environments/environment';
       font-size: 0.65rem;
       color: #ff9100;
       margin-top: 4px;
+    }
+
+    .fc-subcount {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #38bdf8;
+      font-family: var(--font-mono);
+      margin-top: 2px;
+    }
+
+    .fc-prob-sub {
+      font-size: 0.62rem;
+      color: #fbbf24;
+      margin-top: 2px;
+    }
+
+    .forecast-disclaimer {
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.68rem;
+      color: #94a3b8;
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+      line-height: 1.4;
+    }
+
+    .disclaimer-icon {
+      font-size: 0.8rem;
+      flex-shrink: 0;
     }
 
     .timeframe-bar {

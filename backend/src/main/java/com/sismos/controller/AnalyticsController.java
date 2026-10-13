@@ -111,52 +111,71 @@ public class AnalyticsController {
 
     @GetMapping("/aftershock-forecast")
     public ResponseEntity<Map<String, Object>> getAftershockForecast() {
-        // Buscar el evento mayor de los últimos 7 días
-        Instant since = Instant.now().minus(7, ChronoUnit.DAYS);
+        // Buscar el evento mayor de los últimos 30 días con M >= 6.0
+        Instant since = Instant.now().minus(30, ChronoUnit.DAYS);
         List<SeismicEvent> events = seismicEventRepository.findByTimeAfterOrderByTimeDesc(since);
 
         Optional<SeismicEvent> maxEvent = events.stream()
+                .filter(e -> e.getMagnitude() != null && e.getMagnitude().doubleValue() >= 6.0)
                 .max(Comparator.comparing(SeismicEvent::getMagnitude));
 
         if (maxEvent.isEmpty()) {
             return ResponseEntity.ok(Map.of(
                     "status", "NO_ACTIVE_MAJOR_EVENT",
-                    "message", "No se registran eventos mayores recientes para modelado de réplicas"
+                    "message", "No se registran eventos mayores recientes (M >= 6.0) para modelado de réplicas"
             ));
         }
 
         SeismicEvent main = maxEvent.get();
         double mag = main.getMagnitude().doubleValue();
-        long hoursElapsed = ChronoUnit.HOURS.between(main.getTime(), Instant.now());
-
-        // Aplicación del modelo de decaimiento temporal de Omori: n(t) = K / (t + c)^p
-        // Parámetros empíricos típicos para la Fosa Mesoamericana: K = 10^(0.85*M - 3.2), c = 0.05 días, p = 1.05
-        double daysElapsed = Math.max(0.1, hoursElapsed / 24.0);
-        double kFactor = Math.pow(10, 0.75 * mag - 2.8);
-        double expectedRateNext24h = Math.max(0.2, kFactor / Math.pow(daysElapsed + 0.1, 1.05));
-        double expectedRateNext48h = expectedRateNext24h * 1.8;
-        double expectedRateNext72h = expectedRateNext24h * 2.4;
-
-        double probM5Plus = Math.min(0.95, Math.max(0.05, 1.0 - Math.exp(-0.28 * expectedRateNext24h)));
+        long minutesElapsed = Math.max(1, ChronoUnit.MINUTES.between(main.getTime(), Instant.now()));
+        double t0 = minutesElapsed / 1440.0; // tiempo en días transcurridos
 
         Map<String, Object> forecast = new LinkedHashMap<>();
         forecast.put("mainshockId", main.getId());
         forecast.put("mainshockTitle", main.getTitle());
         forecast.put("mainshockMagnitude", mag);
-        forecast.put("hoursSinceMainshock", hoursElapsed);
-        forecast.put("omoriParameters", Map.of("p", 1.05, "c", 0.05, "decayLaw", "Modified Omori Law"));
-        forecast.put("forecastWindow24h", Map.of(
-                "estimatedAftershockCount", Math.round(expectedRateNext24h * 10.0) / 10.0,
-                "probabilityM5Plus", Math.round(probM5Plus * 100.0) + "%"
+        forecast.put("hoursSinceMainshock", ChronoUnit.HOURS.between(main.getTime(), Instant.now()));
+        forecast.put("model", "Reasenberg-Jones 1989 (parámetros genéricos)");
+        forecast.put("parameters", Map.of(
+                "a", com.sismos.analytics.ReasenbergJonesForecaster.PARAM_A,
+                "b", com.sismos.analytics.ReasenbergJonesForecaster.PARAM_B,
+                "p", com.sismos.analytics.ReasenbergJonesForecaster.PARAM_P,
+                "c", com.sismos.analytics.ReasenbergJonesForecaster.PARAM_C
         ));
-        forecast.put("forecastWindow48h", Map.of(
-                "estimatedAftershockCount", Math.round(expectedRateNext48h * 10.0) / 10.0
-        ));
-        forecast.put("forecastWindow72h", Map.of(
-                "estimatedAftershockCount", Math.round(expectedRateNext72h * 10.0) / 10.0
-        ));
+        forecast.put("disclaimer", "Modelo estadístico genérico. No es un pronóstico oficial; consulte a su agencia sismológica nacional.");
+        forecast.put("forecastWindow24h", buildWindowForecast(mag, t0, 1.0));
+        forecast.put("forecastWindow48h", buildWindowForecast(mag, t0, 2.0));
+        forecast.put("forecastWindow72h", buildWindowForecast(mag, t0, 3.0));
 
         return ResponseEntity.ok(forecast);
+    }
+
+    private Map<String, Object> buildWindowForecast(double mainMag, double t0, double windowDays) {
+        double n4 = com.sismos.analytics.ReasenbergJonesForecaster.expectedCount(mainMag, 4.0, t0, t0 + windowDays);
+        double n5 = com.sismos.analytics.ReasenbergJonesForecaster.expectedCount(mainMag, 5.0, t0, t0 + windowDays);
+        double n6 = com.sismos.analytics.ReasenbergJonesForecaster.expectedCount(mainMag, 6.0, t0, t0 + windowDays);
+        double nMain = com.sismos.analytics.ReasenbergJonesForecaster.expectedCount(mainMag, mainMag, t0, t0 + windowDays);
+
+        double p5 = com.sismos.analytics.ReasenbergJonesForecaster.probabilityAtLeastOne(n5);
+        double p6 = com.sismos.analytics.ReasenbergJonesForecaster.probabilityAtLeastOne(n6);
+        double pMain = com.sismos.analytics.ReasenbergJonesForecaster.probabilityAtLeastOne(nMain);
+
+        Map<String, Object> win = new LinkedHashMap<>();
+        win.put("windowHours", (int) (windowDays * 24));
+        win.put("estimatedAftershockCount", Math.round(n4 * 10.0) / 10.0);
+        win.put("expectedCountM4", Math.round(n4 * 10.0) / 10.0);
+        win.put("expectedCountM5", Math.round(n5 * 10.0) / 10.0);
+        win.put("probabilityM5Plus", formatProbability(p5));
+        win.put("probabilityM6Plus", formatProbability(p6));
+        win.put("probabilityMainMagPlus", formatProbability(pMain));
+        return win;
+    }
+
+    private String formatProbability(double p) {
+        if (p >= 0.995) return ">99%";
+        if (p <= 0.005) return "<1%";
+        return Math.round(p * 100.0) + "%";
     }
 
     private String classifyCountry(double lat, double lon) {

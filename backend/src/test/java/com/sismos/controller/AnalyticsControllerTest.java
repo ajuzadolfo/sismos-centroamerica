@@ -105,7 +105,7 @@ class AnalyticsControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/analytics/aftershock-forecast debe retornar pronóstico de Omori")
+    @DisplayName("GET /api/v1/analytics/aftershock-forecast debe retornar pronóstico de Reasenberg-Jones")
     void shouldReturnAftershockForecast() throws Exception {
         GeometryFactory factory = new GeometryFactory(new PrecisionModel(), 4326);
         Point point = factory.createPoint(new Coordinate(-80.5, 7.5));
@@ -127,6 +127,11 @@ class AnalyticsControllerTest {
         mockMvc.perform(get("/api/v1/analytics/aftershock-forecast"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mainshockId").value("us7000major"))
-                .andExpect(jsonPath("$.forecastWindow24h.estimatedAftershockCount").isNumber());
+                .andExpect(jsonPath("$.model").value("Reasenberg-Jones 1989 (parámetros genéricos)"))
+                .andExpect(jsonPath("$.parameters.a").value(-1.67))
+                .andExpect(jsonPath("$.forecastWindow24h.expectedCountM4").isNumber())
+                .andExpect(jsonPath("$.forecastWindow24h.expectedCountM5").isNumber())
+                .andExpect(jsonPath("$.forecastWindow24h.probabilityM5Plus").isString())
+                .andExpect(jsonPath("$.disclaimer").isString());
     }
 }
