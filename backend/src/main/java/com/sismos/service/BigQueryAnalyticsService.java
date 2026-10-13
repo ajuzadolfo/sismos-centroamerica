@@ -48,6 +48,8 @@ public class BigQueryAnalyticsService {
         String query = """
             SELECT
               COUNT(1) AS total_events,
+              MIN(event_time) AS min_time,
+              MAX(event_time) AS max_time,
               COUNTIF(country_code = 'GT') AS gt_count,
               COUNTIF(country_code = 'SV') AS sv_count,
               COUNTIF(country_code = 'HN') AS hn_count,
@@ -76,6 +78,9 @@ public class BigQueryAnalyticsService {
             long total = row.get("total_events").getLongValue();
             if (total == 0) return Optional.empty();
 
+            String minTime = !row.get("min_time").isNull() ? row.get("min_time").getStringValue() : "1980-01-01T00:00:00Z";
+            String maxTime = !row.get("max_time").isNull() ? row.get("max_time").getStringValue() : java.time.Instant.now().toString();
+
             Map<String, Integer> countryDistribution = new LinkedHashMap<>();
             countryDistribution.put("Guatemala", (int) row.get("gt_count").getLongValue());
             countryDistribution.put("El Salvador", (int) row.get("sv_count").getLongValue());
@@ -97,9 +102,10 @@ public class BigQueryAnalyticsService {
             depthDistribution.put("deepOver70Km", (int) row.get("depth_deep").getLongValue());
 
             Map<String, Object> summary = new LinkedHashMap<>();
-            summary.put("dataSource", "BigQuery GIS (Catálogo Histórico 40+ Años)");
+            summary.put("dataSource", "BIGQUERY");
             summary.put("timeframe", "40y");
-            summary.put("analysisWindowDays", 16800);
+            summary.put("windowStart", minTime);
+            summary.put("windowEnd", maxTime);
             summary.put("totalEventsAnalyzed", total);
             summary.put("countryDistribution", countryDistribution);
             summary.put("magnitudeDistribution", magDistribution);

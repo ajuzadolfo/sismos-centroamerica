@@ -23,6 +23,13 @@ public class AnalyticsController {
     @GetMapping("/regional-summary")
     public ResponseEntity<Map<String, Object>> getRegionalSummary(
             @org.springframework.web.bind.annotation.RequestParam(name = "timeframe", defaultValue = "30d") String timeframe) {
+        if (!"30d".equalsIgnoreCase(timeframe) && !"40y".equalsIgnoreCase(timeframe) && !"historical".equalsIgnoreCase(timeframe)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST).body(Map.of(
+                    "status", "INVALID_TIMEFRAME",
+                    "message", "Parámetro timeframe no válido. Valores permitidos: 30d, 40y"
+            ));
+        }
+
         if ("40y".equalsIgnoreCase(timeframe) || "historical".equalsIgnoreCase(timeframe)) {
             if (bigQueryAnalyticsService.isPresent()) {
                 var bqResult = bigQueryAnalyticsService.get().getHistoricalRegionalSummary();
@@ -30,9 +37,14 @@ public class AnalyticsController {
                     return ResponseEntity.ok(bqResult.get());
                 }
             }
+            return ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
+                    "status", "HISTORICAL_UNAVAILABLE",
+                    "message", "El catálogo histórico en BigQuery no se encuentra disponible temporalmente"
+            ));
         }
 
-        Instant since = Instant.now().minus(30, ChronoUnit.DAYS);
+        Instant now = Instant.now();
+        Instant since = now.minus(30, ChronoUnit.DAYS);
         List<SeismicEvent> events = seismicEventRepository.findByTimeAfterOrderByTimeDesc(since);
 
         // 1. Distribución por países de Centroamérica (clasificación geográfica)
@@ -80,8 +92,11 @@ public class AnalyticsController {
         }
 
         Map<String, Object> response = new LinkedHashMap<>();
+        response.put("dataSource", "POSTGIS");
+        response.put("timeframe", "30d");
+        response.put("windowStart", since.toString());
+        response.put("windowEnd", now.toString());
         response.put("totalEventsAnalyzed", events.size());
-        response.put("analysisWindowDays", 30);
         response.put("countryDistribution", countryCounts);
         response.put("magnitudeDistribution", magBuckets);
         response.put("depthDistribution", Map.of(
@@ -89,7 +104,7 @@ public class AnalyticsController {
                 "intermediate30to70Km", intermedios,
                 "deepOver70Km", profundos
         ));
-        response.put("timestamp", Instant.now().toString());
+        response.put("timestamp", now.toString());
 
         return ResponseEntity.ok(response);
     }

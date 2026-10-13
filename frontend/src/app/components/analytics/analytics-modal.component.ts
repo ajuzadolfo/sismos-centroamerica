@@ -17,11 +17,7 @@ import { environment } from '../../../environments/environment';
             <span class="analytics-icon">📊</span>
             <div>
               <h3>{{ transService.currentLang() === 'en' ? 'Central America Geodynamic Analytics' : 'Analítica Geodinámica de Centroamérica' }}</h3>
-              <span class="sub-badge">
-                {{ activeTimeframe() === '40y' ? 
-                    (transService.currentLang() === 'en' ? 'BigQuery GIS Analytics (1980 - 2026 // 40+ Years)' : 'BigQuery GIS Analytics (1980 - 2026 // 40+ Años)') : 
-                    (transService.currentLang() === 'en' ? 'PostGIS Analytics (Real-time // 30 Days)' : 'PostGIS Analytics (Tiempo Real // 30 Días)') }}
-              </span>
+              <span class="sub-badge">{{ getBadgeText() }}</span>
             </div>
           </div>
           <button class="close-btn" (click)="close.emit()">&times;</button>
@@ -48,14 +44,20 @@ import { environment } from '../../../environments/environment';
             <div class="spinner"></div>
             <p>{{ transService.currentLang() === 'en' ? 'Aggregating regional spatial statistics...' : 'Compilando estadísticas espaciales de la región...' }}</p>
           </div>
-        } @else {
+        } @else if (errorMessage(); as err) {
+          <div class="error-state">
+            <span class="error-icon">⚠️</span>
+            <p>{{ err }}</p>
+            <button id="analytics-retry-btn" class="retry-btn" (click)="loadData(activeTimeframe())">
+              🔄 {{ transService.currentLang() === 'en' ? 'Retry' : 'Reintentar' }}
+            </button>
+          </div>
+        } @else if (summary()) {
           <div class="modal-content">
             <!-- 1. Distribución por País -->
             <div class="section-card">
               <h4>
-                {{ activeTimeframe() === '40y' ? 
-                    (transService.currentLang() === 'en' ? 'Historical Seismic Activity by Country (40+ Years)' : 'Sismicidad Histórica por País (40+ Años - BigQuery GIS)') : 
-                    (transService.currentLang() === 'en' ? 'Recent Seismic Activity by Country (Last 30 Days)' : 'Sismicidad por País (Últimos 30 Días)') }}
+                {{ getSectionTitle() }}
                 @if (summary()?.totalEventsAnalyzed; as totalEv) {
                   <span class="total-tag">({{ totalEv | number }} {{ transService.currentLang() === 'en' ? 'events' : 'sismos' }})</span>
                 }
@@ -497,6 +499,44 @@ import { environment } from '../../../environments/environment';
       margin-left: 8px;
       font-family: var(--font-mono);
     }
+
+    .error-state {
+      padding: 48px 24px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .error-icon {
+      font-size: 2.5rem;
+    }
+
+    .error-state p {
+      color: #ef4444;
+      font-weight: 500;
+      font-size: 0.95rem;
+      max-width: 400px;
+      margin: 0;
+    }
+
+    .retry-btn {
+      margin-top: 8px;
+      padding: 8px 16px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .retry-btn:hover {
+      background: rgba(239, 68, 68, 0.25);
+      color: #ffffff;
+    }
   `]
 })
 export class AnalyticsModalComponent implements OnInit {
@@ -507,11 +547,13 @@ export class AnalyticsModalComponent implements OnInit {
 
   readonly activeTimeframe = signal<'40y' | '30d'>('40y');
   readonly loading = signal<boolean>(true);
+  readonly errorMessage = signal<string | null>(null);
   readonly summary = signal<any>(null);
   readonly forecast = signal<any>(null);
 
   ngOnInit() {
     this.loadData(this.activeTimeframe());
+    this.loadForecast();
   }
 
   setTimeframe(tf: '40y' | '30d') {
@@ -522,15 +564,51 @@ export class AnalyticsModalComponent implements OnInit {
 
   loadData(tf: '40y' | '30d' = '40y') {
     this.loading.set(true);
+    this.errorMessage.set(null);
     this.http.get<any>(`${environment.apiUrl}/analytics/regional-summary?timeframe=${tf}`).subscribe({
       next: (data) => {
         this.summary.set(data);
-        this.loadForecast();
-      },
-      error: () => {
         this.loading.set(false);
+      },
+      error: (err) => {
+        this.summary.set(null);
+        this.loading.set(false);
+        const isEn = this.transService.currentLang() === 'en';
+        if (err.status === 503) {
+          this.errorMessage.set(isEn ? 'The historical catalog in BigQuery is temporarily unavailable.' : 'El catálogo histórico en BigQuery no se encuentra disponible temporalmente.');
+        } else {
+          this.errorMessage.set(isEn ? 'Unable to load regional seismic analytics at this time.' : 'No se pudieron compilar las estadísticas regionales en este momento.');
+        }
       }
     });
+  }
+
+  getBadgeText(): string {
+    const s = this.summary();
+    const isEn = this.transService.currentLang() === 'en';
+    if (!s) {
+      return this.activeTimeframe() === '40y' ? 
+        (isEn ? 'BigQuery GIS Analytics (Historical Data Lake)' : 'BigQuery GIS Analytics (Data Lake Histórico)') :
+        (isEn ? 'PostGIS Analytics (Real-time // 30 Days)' : 'PostGIS Analytics (Tiempo Real // 30 Días)');
+    }
+    if (s.dataSource === 'BIGQUERY') {
+      const startYear = s.windowStart ? new Date(s.windowStart).getFullYear() : 1980;
+      const endYear = s.windowEnd ? new Date(s.windowEnd).getFullYear() : new Date().getFullYear();
+      return isEn ? `BigQuery GIS Analytics (${startYear} - ${endYear} // 40+ Years)` : `BigQuery GIS Analytics (${startYear} - ${endYear} // 40+ Años)`;
+    } else {
+      return isEn ? 'PostGIS Analytics (Real-time // 30 Days)' : 'PostGIS Analytics (Tiempo Real // 30 Días)';
+    }
+  }
+
+  getSectionTitle(): string {
+    const s = this.summary();
+    const isEn = this.transService.currentLang() === 'en';
+    if (!s) return isEn ? 'Seismic Activity by Country' : 'Sismicidad por País';
+    if (s.dataSource === 'BIGQUERY') {
+      return isEn ? 'Historical Seismic Activity by Country (40+ Years - BigQuery GIS)' : 'Sismicidad Histórica por País (40+ Años - BigQuery GIS)';
+    } else {
+      return isEn ? 'Recent Seismic Activity by Country (Last 30 Days - PostGIS)' : 'Sismicidad por País (Últimos 30 Días - PostGIS)';
+    }
   }
 
   private loadForecast() {
@@ -539,11 +617,8 @@ export class AnalyticsModalComponent implements OnInit {
         if (data.status !== 'NO_ACTIVE_MAJOR_EVENT') {
           this.forecast.set(data);
         }
-        this.loading.set(false);
       },
-      error: () => {
-        this.loading.set(false);
-      }
+      error: () => {}
     });
   }
 
