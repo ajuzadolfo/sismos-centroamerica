@@ -62,6 +62,9 @@ import { environment } from '../../../environments/environment';
                   <span class="total-tag">({{ totalEv | number }} {{ transService.currentLang() === 'en' ? 'events' : 'sismos' }})</span>
                 }
               </h4>
+              <p class="section-subtitle-note" [title]="transService.currentLang() === 'en' ? 'Classified using official Natural Earth boundaries. Includes offshore events ≤ 100 km.' : 'Clasificación basada en fronteras oficiales Natural Earth. Incluye sismos costa afuera a ≤ 100 km.'">
+                📍 {{ transService.currentLang() === 'en' ? 'Official boundaries (includes offshore ≤100 km)' : 'Fronteras oficiales (incluye sismos costa afuera a ≤100 km)' }}
+              </p>
               <div class="country-bars">
                 @for (item of getCountryList(); track item.name) {
                   <div class="bar-row">
@@ -271,8 +274,16 @@ import { environment } from '../../../environments/environment';
       font-weight: 700;
       letter-spacing: 0.04em;
       color: #cbd5e1;
-      margin-bottom: 12px;
+      margin-bottom: 4px;
       text-transform: uppercase;
+    }
+
+    .section-subtitle-note {
+      font-size: 0.68rem;
+      color: #94a3b8;
+      margin: 0 0 12px 0;
+      cursor: help;
+      display: inline-block;
     }
 
     .country-bars {

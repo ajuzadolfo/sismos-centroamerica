@@ -41,22 +41,13 @@ class AnalyticsControllerTest {
     @Test
     @DisplayName("GET /api/v1/analytics/regional-summary con timeframe=30d debe retornar métricas de PostGIS")
     void shouldReturnRegionalSummaryFor30d() throws Exception {
-        GeometryFactory factory = new GeometryFactory(new PrecisionModel(), 4326);
-        Point point = factory.createPoint(new Coordinate(-86.2, 12.1));
-        point.setSRID(4326);
+        com.sismos.repository.projection.RegionalSummaryRow row = org.mockito.Mockito.mock(com.sismos.repository.projection.RegionalSummaryRow.class);
+        when(row.getCountryLabel()).thenReturn("Nicaragua");
+        when(row.getTotalCount()).thenReturn(1L);
+        when(row.getMagFuerte()).thenReturn(1L);
+        when(row.getSomeros()).thenReturn(1L);
 
-        SeismicEvent event = SeismicEvent.builder()
-                .id("us7000test")
-                .title("M 5.5 - Managua, Nicaragua")
-                .time(Instant.now())
-                .updatedAt(Instant.now())
-                .magnitude(BigDecimal.valueOf(5.5))
-                .depth(BigDecimal.valueOf(25.0))
-                .status("REVIEWED")
-                .geom(point)
-                .build();
-
-        when(seismicEventRepository.findByTimeAfterOrderByTimeDesc(any())).thenReturn(List.of(event));
+        when(seismicEventRepository.getRegionalSummaryAggregation(any())).thenReturn(List.of(row));
 
         mockMvc.perform(get("/api/v1/analytics/regional-summary?timeframe=30d"))
                 .andExpect(status().isOk())
