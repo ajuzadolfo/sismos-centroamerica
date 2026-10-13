@@ -88,9 +88,14 @@ import { environment } from '../../../environments/environment';
               <div class="section-card">
                 <h4>{{ transService.currentLang() === 'en' ? 'Magnitude Breakdown' : 'Rango de Magnitud' }}</h4>
                 <div class="metric-pills">
-                  <div class="pill mag-low">
+                  <div class="pill mag-low" [class.mag-dimmed]="activeTimeframe() === '40y'">
                     <span class="p-num">{{ summary()?.magnitudeDistribution?.menor || 0 }}</span>
                     <span class="p-lbl">&lt; 3.5</span>
+                    @if (activeTimeframe() === '40y') {
+                      <span class="p-incomplete-tag" [title]="transService.currentLang() === 'en' ? 'Below USGS catalog completeness threshold for the region' : 'Por debajo del umbral de completitud del catálogo USGS para la región'">
+                        {{ transService.currentLang() === 'en' ? 'Incomplete' : 'Incompleto' }}
+                      </span>
+                    }
                   </div>
                   <div class="pill mag-med">
                     <span class="p-num">{{ summary()?.magnitudeDistribution?.moderado || 0 }}</span>
@@ -169,6 +174,100 @@ import { environment } from '../../../environments/environment';
                       'Statistical model (Reasenberg & Jones 1989; a=-1.67, b=0.91, p=1.08, c=0.05 d). Not an official forecast; consult your national seismological agency.' : 
                       'Modelo estadístico genérico (Reasenberg & Jones 1989; a=-1.67, b=0.91, p=1.08, c=0.05 d). No es un pronóstico oficial; consulte a su agencia sismológica nacional.' }}
                   </span>
+                </div>
+              </div>
+            }
+
+            <!-- 4. Secciones de Analítica Histórica de Valor Añadido (BigQuery) -->
+            @if (activeTimeframe() === '40y' && insights(); as ins) {
+              <!-- 4.1 Completitud y valor b -->
+              <div class="section-card" id="analytics-completeness-card">
+                <div class="insight-header">
+                  <span class="insight-badge">GUTENBERG-RICHTER &amp; AKI-UTSU (1965)</span>
+                  <h4>{{ transService.currentLang() === 'en' ? 'Catalog Completeness & b-Value' : 'Completitud y Valor b Sismotectónico' }}</h4>
+                </div>
+                <div class="completeness-banner">
+                  <div class="mc-b-values">
+                    <span class="mc-tag">M<sub>c</sub> ≈ {{ ins.completenessMc }}</span>
+                    <span class="b-tag">b = {{ ins.bValue }} ± {{ ins.bValueStdErr }}</span>
+                  </div>
+                  <p class="completeness-note-txt">{{ ins.completenessNote }}</p>
+                </div>
+              </div>
+
+              <!-- 4.2 Anomalía sísmica: 30d vs. media histórica -->
+              <div class="section-card" id="analytics-anomaly-card">
+                <h4>
+                  {{ transService.currentLang() === 'en' ? 'Seismic Activity Anomaly (Last 30d vs 40y Baseline)' : 'Anomalía Sísmica (Últimos 30d vs Media 40 Años)' }}
+                  <span class="mag-threshold-tag">(M ≥ 4.5)</span>
+                </h4>
+                <p class="section-subtitle-note">
+                  ℹ️ {{ transService.currentLang() === 'en' ? 'Ratios > 1.5× indicate elevated activity, commonly due to active aftershock sequences.' : 'Ratios > 1.5× indican actividad elevada, usualmente por secuencias de réplicas activas.' }}
+                </p>
+                <div class="anomaly-grid">
+                  @for (anom of ins.anomalyRatios; track anom.iso2) {
+                    <div class="anomaly-card" [id]="'analytics-anomaly-' + anom.iso2">
+                      <div class="anomaly-info">
+                        <span class="anomaly-country-name">{{ anom.country }}</span>
+                        <span class="anomaly-count-sub">{{ anom.count30d }} / ~{{ anom.historicalMean30d }}</span>
+                      </div>
+                      <span class="anomaly-chip" [class]="getAnomalyChipClass(anom.alertLevel)">
+                        {{ anom.ratio }}× {{ transService.currentLang() === 'en' ? 'norm' : 'normal' }}
+                      </span>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- 4.3 Serie anual (M >= Mc) mini SVG inline -->
+              <div class="section-card" id="analytics-yearly-card">
+                <h4>
+                  {{ transService.currentLang() === 'en' ? 'Historical Annual Trend' : 'Tendencia Anual Histórica' }}
+                  <span class="mag-threshold-tag">(M ≥ {{ ins.completenessMc }})</span>
+                </h4>
+                <div class="yearly-chart-box">
+                  <svg id="analytics-yearly-chart" viewBox="0 0 540 100" class="yearly-svg">
+                    @for (bar of getYearlyBars(); track bar.year) {
+                      <rect 
+                        [attr.x]="bar.x" 
+                        [attr.y]="bar.y" 
+                        [attr.width]="bar.width" 
+                        [attr.height]="bar.height" 
+                        class="yearly-bar"
+                        rx="1">
+                        <title>{{ bar.year }}: {{ bar.count }} {{ transService.currentLang() === 'en' ? 'events' : 'sismos' }} (M ≥ {{ ins.completenessMc }})</title>
+                      </rect>
+                    }
+                    <text x="5" y="98" class="chart-axis-lbl">1980</text>
+                    <text x="250" y="98" class="chart-axis-lbl">2003</text>
+                    <text x="500" y="98" class="chart-axis-lbl">2026</text>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- 4.4 Top 10 sismos históricos -->
+              <div class="section-card" id="analytics-top10-card">
+                <h4>
+                  {{ transService.currentLang() === 'en' ? 'Top 10 Strongest Earthquakes in Catalog' : 'Top 10 Sismos Más Fuertes del Catálogo' }}
+                  <span class="mag-threshold-tag">(USGS 1980 - 2026)</span>
+                </h4>
+                <div class="top10-list">
+                  @for (ev of ins.top10; track ev.eventId; let idx = $index) {
+                    <a 
+                      [href]="ev.usgsUrl" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      [id]="'analytics-top10-' + ev.eventId" 
+                      class="top10-item">
+                      <span class="top10-rank">#{{ idx + 1 }}</span>
+                      <span class="top10-mag">M {{ ev.magnitude }}</span>
+                      <div class="top10-info">
+                        <span class="top10-place">{{ ev.place }}</span>
+                        <span class="top10-meta">{{ ev.eventTime | date:'yyyy-MM-dd' }} · {{ ev.depthKm }} km</span>
+                      </div>
+                      <span class="top10-link-arrow">↗</span>
+                    </a>
+                  }
                 </div>
               </div>
             }
@@ -603,6 +702,241 @@ import { environment } from '../../../environments/environment';
       background: rgba(239, 68, 68, 0.25);
       color: #ffffff;
     }
+
+    .mag-dimmed {
+      opacity: 0.45;
+      border-style: dashed !important;
+      position: relative;
+    }
+
+    .p-incomplete-tag {
+      font-size: 0.55rem;
+      color: #f59e0b;
+      font-weight: 700;
+      margin-top: 2px;
+      letter-spacing: 0.03em;
+    }
+
+    .mag-threshold-tag {
+      font-size: 0.65rem;
+      color: #00f0ff;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      margin-left: 6px;
+      text-transform: none;
+    }
+
+    .insight-header {
+      margin-bottom: 8px;
+    }
+
+    .insight-badge {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .completeness-banner {
+      background: rgba(0, 240, 255, 0.04);
+      border: 1px solid rgba(0, 240, 255, 0.18);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .mc-b-values {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 6px;
+    }
+
+    .mc-tag, .b-tag {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #00f0ff;
+      font-family: var(--font-mono);
+    }
+
+    .completeness-note-txt {
+      font-size: 0.74rem;
+      color: #94a3b8;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .anomaly-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .anomaly-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .anomaly-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .anomaly-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .anomaly-country-name {
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .anomaly-count-sub {
+      font-size: 0.62rem;
+      color: #64748b;
+      font-family: var(--font-mono);
+    }
+
+    .anomaly-chip {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 3px 6px;
+      border-radius: 6px;
+      white-space: nowrap;
+      font-family: var(--font-mono);
+    }
+
+    .chip-neutral {
+      background: rgba(148, 163, 184, 0.14);
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .chip-elevated {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.45);
+    }
+
+    .chip-critical {
+      background: rgba(239, 68, 68, 0.22);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.55);
+    }
+
+    .yearly-chart-box {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 8px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .yearly-svg {
+      width: 100%;
+      height: 95px;
+      overflow: visible;
+    }
+
+    .yearly-bar {
+      fill: #00f0ff;
+      opacity: 0.72;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .yearly-bar:hover {
+      fill: #38bdf8;
+      opacity: 1;
+      filter: drop-shadow(0 0 4px #00f0ff);
+    }
+
+    .chart-axis-lbl {
+      fill: #64748b;
+      font-size: 9px;
+      font-family: var(--font-mono);
+    }
+
+    .top10-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .top10-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .top10-item:hover {
+      background: rgba(0, 240, 255, 0.06);
+      border-color: rgba(0, 240, 255, 0.3);
+      transform: translateX(2px);
+    }
+
+    .top10-rank {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #64748b;
+      width: 24px;
+      font-family: var(--font-mono);
+    }
+
+    .top10-mag {
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: #f43f5e;
+      font-family: var(--font-mono);
+      min-width: 48px;
+    }
+
+    .top10-info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .top10-place {
+      font-size: 0.76rem;
+      color: #e2e8f0;
+      font-weight: 500;
+    }
+
+    .top10-meta {
+      font-size: 0.65rem;
+      color: #94a3b8;
+      font-family: var(--font-mono);
+    }
+
+    .top10-link-arrow {
+      color: #00f0ff;
+      font-size: 0.85rem;
+    }
+
+    .latency-badge {
+      color: #38bdf8;
+      margin-left: 6px;
+      font-size: 0.65rem;
+    }
   `]
 })
 export class AnalyticsModalComponent implements OnInit {
@@ -616,16 +950,23 @@ export class AnalyticsModalComponent implements OnInit {
   readonly errorMessage = signal<string | null>(null);
   readonly summary = signal<any>(null);
   readonly forecast = signal<any>(null);
+  readonly insights = signal<any>(null);
 
   ngOnInit() {
     this.loadData(this.activeTimeframe());
     this.loadForecast();
+    if (this.activeTimeframe() === '40y') {
+      this.loadInsights();
+    }
   }
 
   setTimeframe(tf: '40y' | '30d') {
     if (this.activeTimeframe() === tf) return;
     this.activeTimeframe.set(tf);
     this.loadData(tf);
+    if (tf === '40y') {
+      this.loadInsights();
+    }
   }
 
   loadData(tf: '40y' | '30d' = '40y') {
@@ -646,6 +987,14 @@ export class AnalyticsModalComponent implements OnInit {
           this.errorMessage.set(isEn ? 'Unable to load regional seismic analytics at this time.' : 'No se pudieron compilar las estadísticas regionales en este momento.');
         }
       }
+    });
+  }
+
+  loadInsights() {
+    if (this.insights()) return;
+    this.http.get<any>(`${environment.apiUrl}/analytics/historical-insights`).subscribe({
+      next: (data) => this.insights.set(data),
+      error: () => {}
     });
   }
 
@@ -712,5 +1061,29 @@ export class AnalyticsModalComponent implements OnInit {
         };
       })
       .sort((a, b) => b.count - a.count);
+  }
+
+  getYearlyBars(): { x: number; y: number; width: number; height: number; year: number; count: number }[] {
+    const series = this.insights()?.yearlySeries;
+    if (!series || !series.length) return [];
+    const maxCount = Math.max(1, ...series.map((s: any) => Number(s.count) || 0));
+    const total = series.length;
+    const chartW = 530;
+    const chartH = 80;
+    const barW = Math.max(3, Math.floor(chartW / total) - 2);
+
+    return series.map((s: any, i: number) => {
+      const cnt = Number(s.count) || 0;
+      const h = Math.max(2, Math.round((cnt / maxCount) * chartH));
+      const x = 5 + i * (chartW / total);
+      const y = 88 - h;
+      return { x, y, width: barW, height: h, year: s.year, count: cnt };
+    });
+  }
+
+  getAnomalyChipClass(alert: string): string {
+    if (alert === 'CRITICAL') return 'chip-critical';
+    if (alert === 'ELEVATED') return 'chip-elevated';
+    return 'chip-neutral';
   }
 }

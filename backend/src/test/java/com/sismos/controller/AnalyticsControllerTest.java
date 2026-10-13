@@ -118,4 +118,38 @@ class AnalyticsControllerTest {
                 .andExpect(jsonPath("$.forecastWindow24h.probabilityM5Plus").isString())
                 .andExpect(jsonPath("$.disclaimer").isString());
     }
+
+    @Test
+    @DisplayName("GET /api/v1/analytics/historical-insights retorna métricas avanzadas si BigQuery está disponible")
+    void shouldReturnHistoricalInsightsWhenAvailable() throws Exception {
+        Map<String, Object> mockInsights = Map.of(
+                "completenessMc", 4.5,
+                "bValue", 0.94,
+                "bValueStdErr", 0.03,
+                "completenessNote", "Catálogo completo desde M≈4.5 · b = 0.94 ± 0.03",
+                "anomalyRatios", List.of(Map.of("iso2", "CR", "country", "Costa Rica", "ratio", 1.2)),
+                "yearlySeries", List.of(Map.of("year", 2020, "count", 450)),
+                "top10", List.of(Map.of("eventId", "test7", "magnitude", 7.7))
+        );
+
+        when(postGisAnalyticsService.getRecentCountByCountryM45()).thenReturn(Map.of("CR", 10));
+        when(bigQueryAnalyticsService.getHistoricalInsights(org.mockito.ArgumentMatchers.any())).thenReturn(Optional.of(mockInsights));
+
+        mockMvc.perform(get("/api/v1/analytics/historical-insights"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completenessMc").value(4.5))
+                .andExpect(jsonPath("$.bValue").value(0.94))
+                .andExpect(jsonPath("$.anomalyRatios[0].country").value("Costa Rica"))
+                .andExpect(jsonPath("$.top10[0].magnitude").value(7.7));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/analytics/historical-insights retorna HTTP 503 si BigQuery no está disponible")
+    void shouldReturn503ForHistoricalInsightsWhenUnavailable() throws Exception {
+        when(bigQueryAnalyticsService.getHistoricalInsights(org.mockito.ArgumentMatchers.any())).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/analytics/historical-insights"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value("HISTORICAL_UNAVAILABLE"));
+    }
 }

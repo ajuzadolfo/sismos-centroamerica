@@ -105,5 +105,41 @@ public interface SeismicEventRepository extends JpaRepository<SeismicEvent, Stri
         GROUP BY 1
         """, nativeQuery = true)
     List<com.sismos.repository.projection.RegionalSummaryRow> getRegionalSummaryAggregation(@Param("since") Instant since);
+
+    @Query(value = """
+        SELECT
+            COALESCE(
+                CASE 
+                    WHEN assigned.iso2 = 'GT' THEN 'GT'
+                    WHEN assigned.iso2 = 'SV' THEN 'SV'
+                    WHEN assigned.iso2 = 'HN' THEN 'HN'
+                    WHEN assigned.iso2 = 'NI' THEN 'NI'
+                    WHEN assigned.iso2 = 'CR' THEN 'CR'
+                    WHEN assigned.iso2 = 'PA' THEN 'PA'
+                    ELSE 'OC'
+                END,
+                'OC'
+            ) AS countryIso,
+            COUNT(*) AS countM45
+        FROM seismic_events e
+        LEFT JOIN LATERAL (
+            SELECT cb.iso2
+            FROM country_boundaries cb
+            WHERE ST_Contains(cb.geom, e.geom)
+            UNION ALL
+            SELECT cb_near.iso2
+            FROM country_boundaries cb_near
+            WHERE NOT EXISTS (SELECT 1 FROM country_boundaries c1 WHERE ST_Contains(c1.geom, e.geom))
+              AND ST_DWithin(cb_near.geom::geography, e.geom::geography, 100000)
+            ORDER BY ST_Distance(cb_near.geom::geography, e.geom::geography) ASC
+            LIMIT 1
+        ) assigned ON TRUE
+        WHERE e.time >= :since AND e.magnitude >= :minMag
+        GROUP BY 1
+        """, nativeQuery = true)
+    List<com.sismos.repository.projection.CountryCountRow> countRecentEventsByCountry(
+            @Param("since") Instant since,
+            @Param("minMag") BigDecimal minMag
+    );
 }
 

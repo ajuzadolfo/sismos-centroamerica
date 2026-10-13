@@ -154,6 +154,18 @@ public class PostGisAnalyticsService {
         return win;
     }
 
+    public Map<String, Integer> getRecentCountByCountryM45() {
+        Instant since = Instant.now().minus(30, ChronoUnit.DAYS);
+        List<com.sismos.repository.projection.CountryCountRow> rows =
+                seismicEventRepository.countRecentEventsByCountry(since, java.math.BigDecimal.valueOf(4.5));
+
+        Map<String, Integer> counts = new HashMap<>();
+        for (var row : rows) {
+            counts.put(row.getCountryIso(), row.getCountM45() != null ? row.getCountM45().intValue() : 0);
+        }
+        return counts;
+    }
+
     private String formatProbability(double p) {
         if (p >= 0.995) return ">99%";
         if (p <= 0.005) return "<1%";

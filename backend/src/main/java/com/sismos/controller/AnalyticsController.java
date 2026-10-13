@@ -51,4 +51,19 @@ public class AnalyticsController {
     public ResponseEntity<Map<String, Object>> getAftershockForecast() {
         return ResponseEntity.ok(postGisAnalyticsService.getAftershockForecast());
     }
+
+    @GetMapping("/historical-insights")
+    public ResponseEntity<Map<String, Object>> getHistoricalInsights() {
+        if (bigQueryAnalyticsService.isPresent()) {
+            Map<String, Integer> recentCountsM45 = postGisAnalyticsService.getRecentCountByCountryM45();
+            var insights = bigQueryAnalyticsService.get().getHistoricalInsights(recentCountsM45);
+            if (insights.isPresent()) {
+                return ResponseEntity.ok(insights.get());
+            }
+        }
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
+                "status", "HISTORICAL_UNAVAILABLE",
+                "message", "Los insights analíticos del catálogo histórico en BigQuery no se encuentran disponibles temporalmente"
+        ));
+    }
 }

@@ -138,4 +138,228 @@ public class BigQueryAnalyticsService {
             default -> "Otros / Océano";
         };
     }
+
+    @org.springframework.cache.annotation.Cacheable(value = "historicalInsights", unless = "#result == null || !#result.isPresent()")
+    public Optional<Map<String, Object>> getHistoricalInsights(Map<String, Integer> recentCountsM45) {
+        if (!bigQueryEnabled) {
+            return Optional.empty();
+        }
+
+        BigQuery client = getBigQueryClient();
+        if (client == null) {
+            return Optional.empty();
+        }
+
+        long startNs = System.nanoTime();
+
+        try {
+            // 1. Histograma de magnitud para encontrar Mc por máxima curvatura
+            String histQuery = """
+                SELECT 
+                  ROUND(CAST(magnitude AS FLOAT64), 1) AS mag_bin,
+                  COUNT(1) AS bin_count
+                FROM `sismos_analytics.earthquake_catalog_latest`
+                WHERE magnitude >= 2.0 AND magnitude <= 9.0
+                GROUP BY 1
+                ORDER BY 1 ASC
+                """;
+
+            TableResult histResult = client.query(QueryJobConfiguration.newBuilder(histQuery)
+                    .setUseQueryCache(true)
+                    .setMaximumBytesBilled(100L * 1024L * 1024L)
+                    .build());
+
+            double maxBin = 4.3;
+            long maxBinCount = 0;
+            for (FieldValueList r : histResult.iterateAll()) {
+                double bin = r.get("mag_bin").getDoubleValue();
+                long count = r.get("bin_count").getLongValue();
+                if (count > maxBinCount) {
+                    maxBinCount = count;
+                    maxBin = bin;
+                }
+            }
+            double mc = Math.round((maxBin + 0.2) * 10.0) / 10.0;
+
+            // 2. Parámetros Aki-Utsu MLE y error estándar de Shi & Bolt
+            String mleQuery = String.format(Locale.US, """
+                SELECT 
+                  COUNT(1) AS n_events,
+                  AVG(CAST(magnitude AS FLOAT64)) AS mean_mag,
+                  COALESCE(VAR_SAMP(CAST(magnitude AS FLOAT64)), 0.1) AS var_mag,
+                  MIN(event_time) AS min_time,
+                  MAX(event_time) AS max_time
+                FROM `sismos_analytics.earthquake_catalog_latest`
+                WHERE CAST(magnitude AS FLOAT64) >= %.1f
+                """, mc);
+
+            TableResult mleResult = client.query(QueryJobConfiguration.newBuilder(mleQuery)
+                    .setUseQueryCache(true)
+                    .setMaximumBytesBilled(100L * 1024L * 1024L)
+                    .build());
+
+            double bValue = 0.95;
+            double bStdErr = 0.03;
+            long totalAboveMc = 0;
+            double window30dCount = 480.0;
+
+            var mleIterator = mleResult.iterateAll().iterator();
+            if (mleIterator.hasNext()) {
+                FieldValueList mleRow = mleIterator.next();
+                totalAboveMc = mleRow.get("n_events").getLongValue();
+                if (totalAboveMc > 10) {
+                    double meanMag = mleRow.get("mean_mag").getDoubleValue();
+                    double varMag = mleRow.get("var_mag").getDoubleValue();
+                    double deltaM = 0.1;
+                    double denominator = meanMag - (mc - deltaM / 2.0);
+                    if (denominator > 0.05) {
+                        bValue = (Math.log10(Math.E)) / denominator;
+                        double sigmaMean = Math.sqrt(varMag / totalAboveMc);
+                        bStdErr = 2.3 * bValue * bValue * sigmaMean;
+                    }
+
+                    if (!mleRow.get("min_time").isNull() && !mleRow.get("max_time").isNull()) {
+                        long minSec = mleRow.get("min_time").getTimestampValue() / 1_000_000L;
+                        long maxSec = mleRow.get("max_time").getTimestampValue() / 1_000_000L;
+                        double totalDays = Math.max(30.0, (maxSec - minSec) / 86400.0);
+                        window30dCount = totalDays / 30.0;
+                    }
+                }
+            }
+            bValue = Math.round(bValue * 100.0) / 100.0;
+            bStdErr = Math.round(bStdErr * 100.0) / 100.0;
+
+            // 3. Serie anual de eventos M >= Mc
+            String yearlyQuery = String.format(Locale.US, """
+                SELECT 
+                  EXTRACT(YEAR FROM event_time) AS event_year,
+                  COUNT(1) AS year_count
+                FROM `sismos_analytics.earthquake_catalog_latest`
+                WHERE CAST(magnitude AS FLOAT64) >= %.1f
+                GROUP BY 1
+                ORDER BY 1 ASC
+                """, mc);
+
+            TableResult yearlyResult = client.query(QueryJobConfiguration.newBuilder(yearlyQuery)
+                    .setUseQueryCache(true)
+                    .setMaximumBytesBilled(100L * 1024L * 1024L)
+                    .build());
+
+            List<Map<String, Object>> yearlySeries = new ArrayList<>();
+            for (FieldValueList yr : yearlyResult.iterateAll()) {
+                yearlySeries.add(Map.of(
+                        "year", yr.get("event_year").getLongValue(),
+                        "count", yr.get("year_count").getLongValue()
+                ));
+            }
+
+            // 4. Top 10 sismos históricos
+            String top10Query = """
+                SELECT 
+                  event_id,
+                  COALESCE(title, 'M ' || CAST(magnitude AS STRING)) AS title,
+                  COALESCE(place, 'Centroamérica') AS place,
+                  CAST(magnitude AS FLOAT64) AS magnitude,
+                  COALESCE(magnitude_type, 'mw') AS magnitude_type,
+                  CAST(depth_km AS FLOAT64) AS depth_km,
+                  event_time,
+                  latitude,
+                  longitude
+                FROM `sismos_analytics.earthquake_catalog_latest`
+                ORDER BY magnitude DESC, event_time DESC
+                LIMIT 10
+                """;
+
+            TableResult top10Result = client.query(QueryJobConfiguration.newBuilder(top10Query)
+                    .setUseQueryCache(true)
+                    .setMaximumBytesBilled(100L * 1024L * 1024L)
+                    .build());
+
+            List<Map<String, Object>> top10List = new ArrayList<>();
+            for (FieldValueList ev : top10Result.iterateAll()) {
+                String id = ev.get("event_id").getStringValue();
+                top10List.add(Map.of(
+                        "eventId", id,
+                        "title", ev.get("title").getStringValue(),
+                        "place", ev.get("place").getStringValue(),
+                        "magnitude", Math.round(ev.get("magnitude").getDoubleValue() * 10.0) / 10.0,
+                        "magnitudeType", ev.get("magnitude_type").getStringValue(),
+                        "depthKm", Math.round(ev.get("depth_km").getDoubleValue() * 10.0) / 10.0,
+                        "eventTime", ev.get("event_time").getStringValue(),
+                        "latitude", ev.get("latitude").getDoubleValue(),
+                        "longitude", ev.get("longitude").getDoubleValue(),
+                        "usgsUrl", "https://earthquake.usgs.gov/earthquakes/eventpage/" + id
+                ));
+            }
+
+            // 5. Comparativa de anomalía por país (M >= 4.5)
+            String countryHistQuery = """
+                SELECT 
+                  COALESCE(country_code, 'OC') AS country_code,
+                  COUNT(1) AS total_count
+                FROM `sismos_analytics.earthquake_catalog_latest`
+                WHERE CAST(magnitude AS FLOAT64) >= 4.5
+                GROUP BY 1
+                """;
+
+            TableResult countryHistResult = client.query(QueryJobConfiguration.newBuilder(countryHistQuery)
+                    .setUseQueryCache(true)
+                    .setMaximumBytesBilled(100L * 1024L * 1024L)
+                    .build());
+
+            Map<String, Long> historicalTotals = new HashMap<>();
+            for (FieldValueList row : countryHistResult.iterateAll()) {
+                historicalTotals.put(row.get("country_code").getStringValue(), row.get("total_count").getLongValue());
+            }
+
+            List<Map<String, Object>> anomalyList = new ArrayList<>();
+            Map<String, String> caCountries = new LinkedHashMap<>();
+            caCountries.put("GT", "Guatemala");
+            caCountries.put("SV", "El Salvador");
+            caCountries.put("HN", "Honduras");
+            caCountries.put("NI", "Nicaragua");
+            caCountries.put("CR", "Costa Rica");
+            caCountries.put("PA", "Panamá");
+
+            for (var entry : caCountries.entrySet()) {
+                String iso = entry.getKey();
+                String name = entry.getValue();
+                long histTotal = historicalTotals.getOrDefault(iso, 0L);
+                double mean30d = Math.max(0.1, Math.round((histTotal / window30dCount) * 10.0) / 10.0);
+                int count30d = recentCountsM45.getOrDefault(iso, 0);
+                double ratio = Math.round((count30d / mean30d) * 10.0) / 10.0;
+
+                String alert = "NEUTRAL";
+                if (ratio >= 3.0) alert = "CRITICAL";
+                else if (ratio >= 1.5) alert = "ELEVATED";
+
+                anomalyList.add(Map.of(
+                        "iso2", iso,
+                        "country", name,
+                        "count30d", count30d,
+                        "historicalMean30d", mean30d,
+                        "ratio", ratio,
+                        "alertLevel", alert
+                ));
+            }
+
+            long queryLatencyMs = (System.nanoTime() - startNs) / 1_000_000L;
+
+            Map<String, Object> insights = new LinkedHashMap<>();
+            insights.put("completenessMc", mc);
+            insights.put("bValue", bValue);
+            insights.put("bValueStdErr", bStdErr);
+            insights.put("completenessNote", String.format(Locale.US, "Catálogo completo desde M≈%.1f · b = %.2f ± %.2f (Aki-Utsu / Shi-Bolt)", mc, bValue, bStdErr));
+            insights.put("eventsAnalyzedAboveMc", totalAboveMc);
+            insights.put("anomalyRatios", anomalyList);
+            insights.put("yearlySeries", yearlySeries);
+            insights.put("top10", top10List);
+            insights.put("queryLatencyMs", queryLatencyMs);
+
+            return Optional.of(insights);
+        } catch (Exception e) {
+            log.warn("[BigQuery GIS] Error generando insights históricos: {}", e.getMessage(), e);
+            return Optional.empty();
+        }
+    }
 }
