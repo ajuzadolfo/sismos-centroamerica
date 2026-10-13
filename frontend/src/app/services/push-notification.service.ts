@@ -26,9 +26,30 @@ export class PushNotificationService {
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
-      const active = !!subscription;
-      this.isSubscribed.set(active);
-      return active;
+      if (!subscription) {
+        this.isSubscribed.set(false);
+        return false;
+      }
+
+      // Si existe suscripción pero cambió la clave VAPID pública del backend, invalidar
+      try {
+        const savedVapidKey = localStorage.getItem('sismos.vapidKey');
+        const res = await firstValueFrom(
+          this.http.get<{ publicKey: string; status: string }>(`${this.apiUrl}/vapid-public-key`)
+        );
+        if (res?.publicKey && savedVapidKey && res.publicKey !== savedVapidKey) {
+          console.warn('[Push] Clave VAPID del backend rotada. Reiniciando suscripción previa.');
+          await subscription.unsubscribe();
+          localStorage.removeItem('sismos.vapidKey');
+          this.isSubscribed.set(false);
+          return false;
+        }
+      } catch {
+        // En caso de fallo de red momentáneo, mantener estado reportado por el navegador
+      }
+
+      this.isSubscribed.set(true);
+      return true;
     } catch {
       this.isSubscribed.set(false);
       return false;
@@ -67,6 +88,13 @@ export class PushNotificationService {
       }
 
       const registration = await navigator.serviceWorker.ready;
+      const existingSub = await registration.pushManager.getSubscription();
+      const savedVapidKey = localStorage.getItem('sismos.vapidKey');
+
+      if (existingSub && savedVapidKey && savedVapidKey !== res.publicKey) {
+        await existingSub.unsubscribe();
+      }
+
       const convertedVapidKey = this.urlBase64ToUint8Array(res.publicKey);
 
       const subscription = await registration.pushManager.subscribe({
@@ -84,6 +112,7 @@ export class PushNotificationService {
         })
       );
 
+      localStorage.setItem('sismos.vapidKey', res.publicKey);
       console.info('[Push] Dispositivo suscrito exitosamente a alertas sísmicas.');
       this.isSubscribed.set(true);
       this.isLoading.set(false);
@@ -111,6 +140,7 @@ export class PushNotificationService {
           this.http.post(`${this.apiUrl}/unsubscribe`, { endpoint })
         );
       }
+      localStorage.removeItem('sismos.vapidKey');
       this.isSubscribed.set(false);
       this.isLoading.set(false);
       return true;
