@@ -229,7 +229,7 @@ import { environment } from '../../../environments/environment';
             }
 
             <!-- 4. Secciones de Analítica Histórica de Valor Añadido (BigQuery) -->
-            @if (activeTimeframe() === '40y' && insights(); as ins) {
+            @if (activeTimeframe() !== '30d' && insights(); as ins) {
               <!-- 4.1 Completitud y valor b -->
               <div class="section-card" id="analytics-completeness-card">
                 <div class="insight-header">
@@ -248,8 +248,8 @@ import { environment } from '../../../environments/environment';
               <!-- 4.2 Anomalía sísmica: 30d vs. media histórica -->
               <div class="section-card" id="analytics-anomaly-card">
                 <h4>
-                  {{ transService.currentLang() === 'en' ? 'Seismic Activity Anomaly (Last 30d vs 40y Baseline)' : 'Anomalía Sísmica (Últimos 30d vs Media 40 Años)' }}
-                  <span class="mag-threshold-tag">(M ≥ 4.5)</span>
+                  {{ transService.currentLang() === 'en' ? 'Seismic Activity Anomaly (Last 30d vs Period Baseline)' : 'Anomalía Sísmica (Últimos 30d vs Media del Período)' }}
+                  <span class="mag-threshold-tag">({{ ins.fromYear || 1980 }} - {{ ins.toYear || currentYear }} · M ≥ 4.5)</span>
                 </h4>
                 <p class="section-subtitle-note">
                   ℹ️ {{ transService.currentLang() === 'en' ? 'Ratios > 1.5× indicate elevated activity, commonly due to active aftershock sequences.' : 'Ratios > 1.5× indican actividad elevada, usualmente por secuencias de réplicas activas.' }}
@@ -272,8 +272,8 @@ import { environment } from '../../../environments/environment';
               <!-- 4.3 Serie anual (M >= Mc) mini SVG inline -->
               <div class="section-card" id="analytics-yearly-card">
                 <h4>
-                  {{ transService.currentLang() === 'en' ? 'Historical Annual Trend' : 'Tendencia Anual Histórica' }}
-                  <span class="mag-threshold-tag">(M ≥ {{ ins.completenessMc }})</span>
+                  {{ transService.currentLang() === 'en' ? 'Annual Trend' : 'Tendencia Anual' }}
+                  <span class="mag-threshold-tag">({{ ins.fromYear || 1980 }} - {{ ins.toYear || currentYear }} · M ≥ {{ ins.completenessMc }})</span>
                 </h4>
                 <div class="yearly-chart-box">
                   <svg id="analytics-yearly-chart" viewBox="0 0 540 100" class="yearly-svg">
@@ -306,8 +306,8 @@ import { environment } from '../../../environments/environment';
               <!-- 4.4 Top 10 sismos históricos -->
               <div class="section-card" id="analytics-top10-card">
                 <h4>
-                  {{ transService.currentLang() === 'en' ? 'Top 10 Strongest Earthquakes in Catalog' : 'Top 10 Sismos Más Fuertes del Catálogo' }}
-                  <span class="mag-threshold-tag">(USGS 1980 - 2026)</span>
+                  {{ transService.currentLang() === 'en' ? 'Top 10 Strongest Earthquakes in Range' : 'Top 10 Sismos Más Fuertes del Rango' }}
+                  <span class="mag-threshold-tag">(USGS {{ ins.fromYear || 1980 }} - {{ ins.toYear || currentYear }})</span>
                 </h4>
                 <div class="top10-list">
                   @for (ev of ins.top10; track ev.eventId; let idx = $index) {
@@ -321,7 +321,18 @@ import { environment } from '../../../environments/environment';
                       <span class="top10-mag">M {{ ev.magnitude }}</span>
                       <div class="top10-info">
                         <span class="top10-place">{{ ev.place }}</span>
-                        <span class="top10-meta">{{ formatTopDate(ev.eventTime) }} · {{ ev.depthKm }} km</span>
+                        <div class="top10-meta">
+                          <span class="meta-date">{{ formatTopDate(ev.eventTime) }}</span>
+                          <span class="meta-sep">·</span>
+                          <span class="time-badge local" [title]="transService.currentLang() === 'en' ? 'Local Time' : 'Hora Local'">
+                            🕒 Local: {{ formatTopLocalTime(ev.eventTime) }}
+                          </span>
+                          <span class="time-badge utc" title="Tiempo Universal Coordinado (UTC)">
+                            🌐 UTC: {{ formatTopUtcTime(ev.eventTime) }}
+                          </span>
+                          <span class="meta-sep">·</span>
+                          <span class="meta-depth">{{ ev.depthKm }} km</span>
+                        </div>
                       </div>
                       <span class="top10-link-arrow">↗</span>
                     </a>
@@ -1062,9 +1073,50 @@ import { environment } from '../../../environments/environment';
     }
 
     .top10-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
       font-size: 0.65rem;
       color: #94a3b8;
       font-family: var(--font-mono);
+      margin-top: 3px;
+    }
+
+    .meta-date {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .meta-sep {
+      color: #475569;
+    }
+
+    .time-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.62rem;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+    }
+
+    .time-badge.local {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: #38bdf8;
+    }
+
+    .time-badge.utc {
+      background: rgba(167, 139, 250, 0.1);
+      border: 1px solid rgba(167, 139, 250, 0.25);
+      color: #c4b5fd;
+    }
+
+    .meta-depth {
+      color: #94a3b8;
     }
 
     .top10-link-arrow {
@@ -1125,6 +1177,8 @@ export class AnalyticsModalComponent implements OnInit {
       } else {
         this.insights.set(null);
       }
+    } else {
+      this.applyCustomRange();
     }
   }
 
@@ -1323,25 +1377,52 @@ export class AnalyticsModalComponent implements OnInit {
     return 'chip-neutral';
   }
 
-  formatTopDate(val: string | number | undefined): string {
-    if (!val) return '';
+  parseTopDate(val: string | number | undefined): Date | null {
+    if (!val) return null;
     if (typeof val === 'number') {
       const ms = val < 10_000_000_000 ? val * 1000 : val;
-      return new Date(ms).toISOString().slice(0, 10);
+      const d = new Date(ms);
+      return isNaN(d.getTime()) ? null : d;
     }
     const str = String(val).trim();
     if (str.includes('T') || str.includes(' ')) {
       const d = new Date(str.replace(' ', 'T'));
-      return isNaN(d.getTime()) ? str.slice(0, 10) : d.toISOString().slice(0, 10);
-    }
-    if (str.includes('-')) {
-      return str.slice(0, 10);
+      if (!isNaN(d.getTime())) return d;
     }
     const num = Number(str);
     if (!isNaN(num) && num > 0) {
       const ms = num < 10_000_000_000 ? num * 1000 : num;
-      return new Date(ms).toISOString().slice(0, 10);
+      const d = new Date(ms);
+      if (!isNaN(d.getTime())) return d;
     }
-    return str;
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  formatTopDate(val: string | number | undefined): string {
+    const d = this.parseTopDate(val);
+    if (!d) return String(val || '').slice(0, 10);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  formatTopLocalTime(val: string | number | undefined): string {
+    const d = this.parseTopDate(val);
+    if (!d) return '--:--';
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  formatTopUtcTime(val: string | number | undefined): string {
+    const d = this.parseTopDate(val);
+    if (!d) return '--:--';
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    const ss = String(d.getUTCSeconds()).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
   }
 }
