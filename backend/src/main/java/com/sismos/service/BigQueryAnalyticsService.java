@@ -58,6 +58,7 @@ public class BigQueryAnalyticsService {
               COUNTIF(country_code = 'NI') AS ni_count,
               COUNTIF(country_code = 'CR') AS cr_count,
               COUNTIF(country_code = 'PA') AS pa_count,
+              COUNTIF(country_code = 'EXT') AS ext_count,
               COUNTIF(country_code = 'OC' OR country_code IS NULL) AS oc_count,
               COUNTIF(magnitude < 3.5) AS mag_menor,
               COUNTIF(magnitude >= 3.5 AND magnitude < 4.5) AS mag_moderado,
@@ -93,6 +94,7 @@ public class BigQueryAnalyticsService {
             countryDistribution.put("Nicaragua", (int) row.get("ni_count").getLongValue());
             countryDistribution.put("Costa Rica", (int) row.get("cr_count").getLongValue());
             countryDistribution.put("Panamá", (int) row.get("pa_count").getLongValue());
+            countryDistribution.put("Fuera de Centroamérica", (int) row.get("ext_count").getLongValue());
             countryDistribution.put("Otros / Océano", (int) row.get("oc_count").getLongValue());
 
             Map<String, Integer> magDistribution = new LinkedHashMap<>();
@@ -135,6 +137,7 @@ public class BigQueryAnalyticsService {
             case "NI" -> "Nicaragua";
             case "CR" -> "Costa Rica";
             case "PA" -> "Panamá";
+            case "EXT" -> "Fuera de Centroamérica";
             default -> "Otros / Océano";
         };
     }

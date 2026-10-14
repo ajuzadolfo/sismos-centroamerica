@@ -1056,6 +1056,7 @@ export class AnalyticsModalComponent implements OnInit {
         if (isEn) {
           if (k === 'Panamá') displayName = 'Panama';
           else if (k === 'Otros / Océano') displayName = 'Other / Offshore';
+          else if (k === 'Fuera de Centroamérica') displayName = 'Outside Central America';
         }
         const val = Number(dist[k]) || 0;
         return {
