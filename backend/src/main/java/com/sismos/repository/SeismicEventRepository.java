@@ -93,12 +93,10 @@ public interface SeismicEventRepository extends JpaRepository<SeismicEvent, Stri
             SELECT cb.iso2
             FROM country_boundaries cb
             WHERE ST_Contains(cb.geom, e.geom)
-            UNION ALL
-            SELECT cb_near.iso2
-            FROM country_boundaries cb_near
-            WHERE NOT EXISTS (SELECT 1 FROM country_boundaries c1 WHERE ST_Contains(c1.geom, e.geom))
-              AND ST_DWithin(cb_near.geom::geography, e.geom::geography, 100000)
-            ORDER BY ST_Distance(cb_near.geom::geography, e.geom::geography) ASC
+               OR ST_DWithin(cb.geom::geography, e.geom::geography, 100000)
+            ORDER BY 
+                CASE WHEN ST_Contains(cb.geom, e.geom) THEN 0 ELSE 1 END,
+                ST_Distance(cb.geom::geography, e.geom::geography) ASC
             LIMIT 1
         ) assigned ON TRUE
         WHERE e.time >= :since
@@ -126,12 +124,10 @@ public interface SeismicEventRepository extends JpaRepository<SeismicEvent, Stri
             SELECT cb.iso2
             FROM country_boundaries cb
             WHERE ST_Contains(cb.geom, e.geom)
-            UNION ALL
-            SELECT cb_near.iso2
-            FROM country_boundaries cb_near
-            WHERE NOT EXISTS (SELECT 1 FROM country_boundaries c1 WHERE ST_Contains(c1.geom, e.geom))
-              AND ST_DWithin(cb_near.geom::geography, e.geom::geography, 100000)
-            ORDER BY ST_Distance(cb_near.geom::geography, e.geom::geography) ASC
+               OR ST_DWithin(cb.geom::geography, e.geom::geography, 100000)
+            ORDER BY 
+                CASE WHEN ST_Contains(cb.geom, e.geom) THEN 0 ELSE 1 END,
+                ST_Distance(cb.geom::geography, e.geom::geography) ASC
             LIMIT 1
         ) assigned ON TRUE
         WHERE e.time >= :since AND e.magnitude >= :minMag
