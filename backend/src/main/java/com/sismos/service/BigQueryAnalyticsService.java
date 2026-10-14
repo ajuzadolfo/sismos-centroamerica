@@ -150,7 +150,7 @@ public class BigQueryAnalyticsService {
 
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("dataSource", "BIGQUERY");
-            summary.put("timeframe", hasFilter ? (startY + "-" + endY) : "40y");
+            summary.put("timeframe", hasYearFilter ? (startY + "-" + endY) : "40y");
             summary.put("fromYear", startY);
             summary.put("toYear", endY);
             summary.put("windowStart", minTime);
