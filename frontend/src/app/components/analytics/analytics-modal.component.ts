@@ -28,21 +28,71 @@ import { environment } from '../../../environments/environment';
           <button class="close-btn" (click)="close.emit()">&times;</button>
         </div>
 
-        <!-- Selector de Período Histórico (BigQuery GIS vs PostGIS) -->
+        <!-- Selector de Período Histórico (Presets + Rango de Años) -->
         <div class="timeframe-bar">
           <button 
-            class="timeframe-btn" 
-            [class.active]="activeTimeframe() === '40y'" 
-            (click)="setTimeframe('40y')">
-            🏛️ {{ transService.currentLang() === 'en' ? '40+ Years (BigQuery GIS Data Lake)' : '40+ Años (Data Lake BigQuery GIS)' }}
-          </button>
-          <button 
+            id="analytics-tf-30d"
             class="timeframe-btn" 
             [class.active]="activeTimeframe() === '30d'" 
             (click)="setTimeframe('30d')">
-            ⏱️ {{ transService.currentLang() === 'en' ? 'Last 30 Days (PostGIS)' : 'Últimos 30 Días (PostGIS)' }}
+            ⏱️ {{ transService.currentLang() === 'en' ? '30 Days' : '30 Días' }}
+          </button>
+          <button 
+            id="analytics-tf-5y"
+            class="timeframe-btn" 
+            [class.active]="activeTimeframe() === '5y'" 
+            (click)="setTimeframe('5y')">
+            ⚡ {{ transService.currentLang() === 'en' ? '5 Years' : '5 Años' }}
+          </button>
+          <button 
+            id="analytics-tf-10y"
+            class="timeframe-btn" 
+            [class.active]="activeTimeframe() === '10y'" 
+            (click)="setTimeframe('10y')">
+            📈 {{ transService.currentLang() === 'en' ? '10 Years' : '10 Años' }}
+          </button>
+          <button 
+            id="analytics-tf-40y"
+            class="timeframe-btn" 
+            [class.active]="activeTimeframe() === '40y'" 
+            (click)="setTimeframe('40y')">
+            🏛️ {{ transService.currentLang() === 'en' ? '40+ Years' : '40+ Años' }}
+          </button>
+          <button 
+            id="analytics-tf-custom"
+            class="timeframe-btn" 
+            [class.active]="activeTimeframe() === 'custom'" 
+            (click)="setTimeframe('custom')">
+            📅 {{ transService.currentLang() === 'en' ? 'Year Range' : 'Rango' }}
           </button>
         </div>
+
+        @if (activeTimeframe() === 'custom') {
+          <div class="custom-range-bar" id="analytics-custom-range-bar">
+            <div class="range-inputs">
+              <label class="range-lbl">
+                <span>{{ transService.currentLang() === 'en' ? 'From:' : 'Desde:' }}</span>
+                <select class="year-select" id="analytics-from-year-select" [value]="fromYear()" (change)="onFromYearChange($event)">
+                  @for (y of availableYears; track y) {
+                    <option [value]="y" [disabled]="y > toYear()">{{ y }}</option>
+                  }
+                </select>
+              </label>
+              <span class="range-sep">—</span>
+              <label class="range-lbl">
+                <span>{{ transService.currentLang() === 'en' ? 'To:' : 'Hasta:' }}</span>
+                <select class="year-select" id="analytics-to-year-select" [value]="toYear()" (change)="onToYearChange($event)">
+                  @for (y of availableYears; track y) {
+                    <option [value]="y" [disabled]="y < fromYear()">{{ y }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+            <button class="apply-range-btn" id="analytics-apply-range-btn" (click)="applyCustomRange()">
+              🔍 {{ transService.currentLang() === 'en' ? 'Analyze Range' : 'Consultar Rango' }}
+            </button>
+          </div>
+        }
 
         @if (loading()) {
           <div class="loading-state">
@@ -179,7 +229,7 @@ import { environment } from '../../../environments/environment';
             }
 
             <!-- 4. Secciones de Analítica Histórica de Valor Añadido (BigQuery) -->
-            @if (activeTimeframe() === '40y' && insights(); as ins) {
+            @if (activeTimeframe() !== '30d' && insights(); as ins) {
               <!-- 4.1 Completitud y valor b -->
               <div class="section-card" id="analytics-completeness-card">
                 <div class="insight-header">
@@ -198,8 +248,8 @@ import { environment } from '../../../environments/environment';
               <!-- 4.2 Anomalía sísmica: 30d vs. media histórica -->
               <div class="section-card" id="analytics-anomaly-card">
                 <h4>
-                  {{ transService.currentLang() === 'en' ? 'Seismic Activity Anomaly (Last 30d vs 40y Baseline)' : 'Anomalía Sísmica (Últimos 30d vs Media 40 Años)' }}
-                  <span class="mag-threshold-tag">(M ≥ 4.5)</span>
+                  {{ transService.currentLang() === 'en' ? 'Seismic Activity Anomaly (Last 30d vs Period Baseline)' : 'Anomalía Sísmica (Últimos 30d vs Media del Período)' }}
+                  <span class="mag-threshold-tag">({{ ins.fromYear || 1980 }} - {{ ins.toYear || currentYear }} · M ≥ 4.5)</span>
                 </h4>
                 <p class="section-subtitle-note">
                   ℹ️ {{ transService.currentLang() === 'en' ? 'Ratios > 1.5× indicate elevated activity, commonly due to active aftershock sequences.' : 'Ratios > 1.5× indican actividad elevada, usualmente por secuencias de réplicas activas.' }}
@@ -222,8 +272,8 @@ import { environment } from '../../../environments/environment';
               <!-- 4.3 Serie anual (M >= Mc) mini SVG inline -->
               <div class="section-card" id="analytics-yearly-card">
                 <h4>
-                  {{ transService.currentLang() === 'en' ? 'Historical Annual Trend' : 'Tendencia Anual Histórica' }}
-                  <span class="mag-threshold-tag">(M ≥ {{ ins.completenessMc }})</span>
+                  {{ transService.currentLang() === 'en' ? 'Annual Trend' : 'Tendencia Anual' }}
+                  <span class="mag-threshold-tag">({{ ins.fromYear || 1980 }} - {{ ins.toYear || currentYear }} · M ≥ {{ ins.completenessMc }})</span>
                 </h4>
                 <div class="yearly-chart-box">
                   <svg id="analytics-yearly-chart" viewBox="0 0 540 100" class="yearly-svg">
@@ -238,9 +288,17 @@ import { environment } from '../../../environments/environment';
                         <title>{{ bar.year }}: {{ bar.count }} {{ transService.currentLang() === 'en' ? 'events' : 'sismos' }} (M ≥ {{ ins.completenessMc }})</title>
                       </rect>
                     }
-                    <text x="5" y="98" class="chart-axis-lbl">1980</text>
-                    <text x="250" y="98" class="chart-axis-lbl">2003</text>
-                    <text x="500" y="98" class="chart-axis-lbl">2026</text>
+                    <line x1="5" y1="89" x2="535" y2="89" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" />
+                    @for (lbl of getYearlyAxisLabels(); track lbl.text) {
+                      <text 
+                        [attr.x]="lbl.x" 
+                        y="98" 
+                        [attr.text-anchor]="lbl.anchor"
+                        [class.current-year]="lbl.isCurrent"
+                        class="chart-axis-lbl">
+                        {{ lbl.text }}
+                      </text>
+                    }
                   </svg>
                 </div>
               </div>
@@ -248,8 +306,8 @@ import { environment } from '../../../environments/environment';
               <!-- 4.4 Top 10 sismos históricos -->
               <div class="section-card" id="analytics-top10-card">
                 <h4>
-                  {{ transService.currentLang() === 'en' ? 'Top 10 Strongest Earthquakes in Catalog' : 'Top 10 Sismos Más Fuertes del Catálogo' }}
-                  <span class="mag-threshold-tag">(USGS 1980 - 2026)</span>
+                  {{ transService.currentLang() === 'en' ? 'Top 10 Strongest Earthquakes in Range' : 'Top 10 Sismos Más Fuertes del Rango' }}
+                  <span class="mag-threshold-tag">(USGS {{ ins.fromYear || 1980 }} - {{ ins.toYear || currentYear }})</span>
                 </h4>
                 <div class="top10-list">
                   @for (ev of ins.top10; track ev.eventId; let idx = $index) {
@@ -263,7 +321,18 @@ import { environment } from '../../../environments/environment';
                       <span class="top10-mag">M {{ ev.magnitude }}</span>
                       <div class="top10-info">
                         <span class="top10-place">{{ ev.place }}</span>
-                        <span class="top10-meta">{{ ev.eventTime | date:'yyyy-MM-dd' }} · {{ ev.depthKm }} km</span>
+                        <div class="top10-meta">
+                          <span class="meta-date">{{ formatTopDate(ev.eventTime) }}</span>
+                          <span class="meta-sep">·</span>
+                          <span class="time-badge local" [title]="transService.currentLang() === 'en' ? 'Local Time' : 'Hora Local'">
+                            🕒 Local: {{ formatTopLocalTime(ev.eventTime) }}
+                          </span>
+                          <span class="time-badge utc" title="Tiempo Universal Coordinado (UTC)">
+                            🌐 UTC: {{ formatTopUtcTime(ev.eventTime) }}
+                          </span>
+                          <span class="meta-sep">·</span>
+                          <span class="meta-depth">{{ ev.depthKm }} km</span>
+                        </div>
                       </div>
                       <span class="top10-link-arrow">↗</span>
                     </a>
@@ -620,8 +689,9 @@ import { environment } from '../../../environments/environment';
 
     .timeframe-bar {
       display: flex;
-      gap: 8px;
-      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
       background: rgba(255, 255, 255, 0.04);
       padding: 5px;
       border-radius: 12px;
@@ -629,20 +699,22 @@ import { environment } from '../../../environments/environment';
     }
 
     .timeframe-btn {
-      flex: 1;
-      padding: 9px 14px;
+      flex: 1 1 auto;
+      min-width: 80px;
+      padding: 8px 10px;
       border-radius: 8px;
       border: 1px solid transparent;
       background: transparent;
       color: #94a3b8;
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.25s ease;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 5px;
+      white-space: nowrap;
     }
 
     .timeframe-btn:hover {
@@ -655,6 +727,79 @@ import { environment } from '../../../environments/environment';
       border-color: rgba(0, 240, 255, 0.55);
       color: #00f0ff;
       box-shadow: 0 0 15px rgba(0, 240, 255, 0.22);
+    }
+
+    .custom-range-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 14px;
+      margin-bottom: 16px;
+      background: rgba(0, 240, 255, 0.05);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      border-radius: 10px;
+      flex-wrap: wrap;
+    }
+
+    .range-inputs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .range-lbl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.76rem;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .range-sep {
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .year-select {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      color: #00f0ff;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 700;
+      border-radius: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .year-select:focus {
+      border-color: #00f0ff;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.35);
+    }
+
+    .apply-range-btn {
+      background: rgba(0, 240, 255, 0.18);
+      border: 1px solid rgba(0, 240, 255, 0.6);
+      color: #00f0ff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .apply-range-btn:hover {
+      background: rgba(0, 240, 255, 0.3);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+      color: #ffffff;
     }
 
     .total-tag {
@@ -864,8 +1009,14 @@ import { environment } from '../../../environments/environment';
 
     .chart-axis-lbl {
       fill: #64748b;
-      font-size: 9px;
+      font-size: 8px;
       font-family: var(--font-mono);
+      user-select: none;
+    }
+
+    .chart-axis-lbl.current-year {
+      fill: #00f0ff;
+      font-weight: 700;
     }
 
     .top10-list {
@@ -922,9 +1073,50 @@ import { environment } from '../../../environments/environment';
     }
 
     .top10-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
       font-size: 0.65rem;
       color: #94a3b8;
       font-family: var(--font-mono);
+      margin-top: 3px;
+    }
+
+    .meta-date {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .meta-sep {
+      color: #475569;
+    }
+
+    .time-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.62rem;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+    }
+
+    .time-badge.local {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: #38bdf8;
+    }
+
+    .time-badge.utc {
+      background: rgba(167, 139, 250, 0.1);
+      border: 1px solid rgba(167, 139, 250, 0.25);
+      color: #c4b5fd;
+    }
+
+    .meta-depth {
+      color: #94a3b8;
     }
 
     .top10-link-arrow {
@@ -945,7 +1137,12 @@ export class AnalyticsModalComponent implements OnInit {
   private http = inject(HttpClient);
   transService = inject(TranslationService);
 
-  readonly activeTimeframe = signal<'40y' | '30d'>('40y');
+  readonly activeTimeframe = signal<'30d' | '5y' | '10y' | '40y' | 'custom'>('40y');
+  readonly fromYear = signal<number>(1980);
+  readonly toYear = signal<number>(new Date().getFullYear());
+  readonly currentYear = new Date().getFullYear();
+  readonly availableYears = Array.from({ length: new Date().getFullYear() - 1980 + 1 }, (_, i) => 1980 + i);
+
   readonly loading = signal<boolean>(true);
   readonly errorMessage = signal<string | null>(null);
   readonly summary = signal<any>(null);
@@ -955,24 +1152,67 @@ export class AnalyticsModalComponent implements OnInit {
   ngOnInit() {
     this.loadData(this.activeTimeframe());
     this.loadForecast();
-    if (this.activeTimeframe() === '40y') {
-      this.loadInsights();
-    }
+    this.loadInsights(this.activeTimeframe());
   }
 
-  setTimeframe(tf: '40y' | '30d') {
-    if (this.activeTimeframe() === tf) return;
+  setTimeframe(tf: '30d' | '5y' | '10y' | '40y' | 'custom') {
+    if (this.activeTimeframe() === tf && tf !== 'custom') return;
     this.activeTimeframe.set(tf);
-    this.loadData(tf);
-    if (tf === '40y') {
-      this.loadInsights();
+
+    if (tf === '5y') {
+      this.fromYear.set(this.currentYear - 5);
+      this.toYear.set(this.currentYear);
+    } else if (tf === '10y') {
+      this.fromYear.set(this.currentYear - 10);
+      this.toYear.set(this.currentYear);
+    } else if (tf === '40y') {
+      this.fromYear.set(1980);
+      this.toYear.set(this.currentYear);
+    }
+
+    if (tf !== 'custom') {
+      this.loadData(tf);
+      if (tf !== '30d') {
+        this.loadInsights(tf);
+      } else {
+        this.insights.set(null);
+      }
+    } else {
+      this.applyCustomRange();
     }
   }
 
-  loadData(tf: '40y' | '30d' = '40y') {
+  applyCustomRange() {
+    this.loadData('custom');
+    this.loadInsights('custom');
+  }
+
+  onFromYearChange(event: Event) {
+    const val = Number((event.target as HTMLSelectElement).value);
+    this.fromYear.set(val);
+    if (val > this.toYear()) {
+      this.toYear.set(val);
+    }
+  }
+
+  onToYearChange(event: Event) {
+    const val = Number((event.target as HTMLSelectElement).value);
+    this.toYear.set(val);
+    if (val < this.fromYear()) {
+      this.fromYear.set(val);
+    }
+  }
+
+  loadData(tf: '30d' | '5y' | '10y' | '40y' | 'custom' = this.activeTimeframe()) {
     this.loading.set(true);
     this.errorMessage.set(null);
-    this.http.get<any>(`${environment.apiUrl}/analytics/regional-summary?timeframe=${tf}`).subscribe({
+
+    let url = `${environment.apiUrl}/analytics/regional-summary?timeframe=${tf}`;
+    if (tf === 'custom') {
+      url = `${environment.apiUrl}/analytics/regional-summary?fromYear=${this.fromYear()}&toYear=${this.toYear()}`;
+    }
+
+    this.http.get<any>(url).subscribe({
       next: (data) => {
         this.summary.set(data);
         this.loading.set(false);
@@ -990,9 +1230,16 @@ export class AnalyticsModalComponent implements OnInit {
     });
   }
 
-  loadInsights() {
-    if (this.insights()) return;
-    this.http.get<any>(`${environment.apiUrl}/analytics/historical-insights`).subscribe({
+  loadInsights(tf: '30d' | '5y' | '10y' | '40y' | 'custom' = this.activeTimeframe()) {
+    if (tf === '30d') {
+      this.insights.set(null);
+      return;
+    }
+    let url = `${environment.apiUrl}/analytics/historical-insights?timeframe=${tf}`;
+    if (tf === 'custom') {
+      url = `${environment.apiUrl}/analytics/historical-insights?fromYear=${this.fromYear()}&toYear=${this.toYear()}`;
+    }
+    this.http.get<any>(url).subscribe({
       next: (data) => this.insights.set(data),
       error: () => {
         this.insights.set(null);
@@ -1004,14 +1251,15 @@ export class AnalyticsModalComponent implements OnInit {
     const s = this.summary();
     const isEn = this.transService.currentLang() === 'en';
     if (!s) {
-      return this.activeTimeframe() === '40y' ? 
-        (isEn ? 'BigQuery GIS Analytics (Historical Data Lake)' : 'BigQuery GIS Analytics (Data Lake Histórico)') :
-        (isEn ? 'PostGIS Analytics (Real-time // 30 Days)' : 'PostGIS Analytics (Tiempo Real // 30 Días)');
+      return this.activeTimeframe() === '30d' ? 
+        (isEn ? 'PostGIS Analytics (Real-time // 30 Days)' : 'PostGIS Analytics (Tiempo Real // 30 Días)') :
+        (isEn ? 'BigQuery GIS Analytics (Historical Data Lake)' : 'BigQuery GIS Analytics (Data Lake Histórico)');
     }
     if (s.dataSource === 'BIGQUERY') {
-      const startYear = s.windowStart ? new Date(s.windowStart).getFullYear() : 1980;
-      const endYear = s.windowEnd ? new Date(s.windowEnd).getFullYear() : new Date().getFullYear();
-      return isEn ? `BigQuery GIS Analytics (${startYear} - ${endYear} // 40+ Years)` : `BigQuery GIS Analytics (${startYear} - ${endYear} // 40+ Años)`;
+      const startYear = s.fromYear || (s.windowStart ? new Date(s.windowStart).getFullYear() : 1980);
+      const endYear = s.toYear || (s.windowEnd ? new Date(s.windowEnd).getFullYear() : this.currentYear);
+      const span = (endYear - startYear) + 1;
+      return isEn ? `BigQuery GIS Analytics (${startYear} - ${endYear} // ${span} Years)` : `BigQuery GIS Analytics (${startYear} - ${endYear} // ${span} Años)`;
     } else {
       return isEn ? 'PostGIS Analytics (Real-time // 30 Days)' : 'PostGIS Analytics (Tiempo Real // 30 Días)';
     }
@@ -1022,7 +1270,9 @@ export class AnalyticsModalComponent implements OnInit {
     const isEn = this.transService.currentLang() === 'en';
     if (!s) return isEn ? 'Seismic Activity by Country' : 'Sismicidad por País';
     if (s.dataSource === 'BIGQUERY') {
-      return isEn ? 'Historical Seismic Activity by Country (40+ Years - BigQuery GIS)' : 'Sismicidad Histórica por País (40+ Años - BigQuery GIS)';
+      const startYear = s.fromYear || 1980;
+      const endYear = s.toYear || this.currentYear;
+      return isEn ? `Historical Activity by Country (${startYear} - ${endYear} // BigQuery GIS)` : `Sismicidad por País (${startYear} - ${endYear} // BigQuery GIS)`;
     } else {
       return isEn ? 'Recent Seismic Activity by Country (Last 30 Days - PostGIS)' : 'Sismicidad por País (Últimos 30 Días - PostGIS)';
     }
@@ -1086,9 +1336,93 @@ export class AnalyticsModalComponent implements OnInit {
     });
   }
 
+  getYearlyAxisLabels(): { x: number; text: string; anchor: 'start' | 'middle' | 'end'; isCurrent: boolean }[] {
+    const series = this.insights()?.yearlySeries;
+    if (!series || !series.length) return [];
+
+    const total = series.length;
+    const chartW = 530;
+    const startYear = Number(series[0].year);
+    const endYear = Number(series[series.length - 1].year);
+    const span = endYear - startYear;
+
+    const labels: { x: number; text: string; anchor: 'start' | 'middle' | 'end'; isCurrent: boolean }[] = [];
+
+    series.forEach((s: any, i: number) => {
+      const year = Number(s.year);
+      const isStart = year === startYear;
+      const isEnd = year === endYear;
+
+      const barCenterX = 5 + i * (chartW / total) + Math.max(3, Math.floor(chartW / total) - 2) / 2;
+
+      if (isStart) {
+        labels.push({ x: 5, text: String(year), anchor: 'start', isCurrent: false });
+      } else if (isEnd) {
+        labels.push({ x: 535, text: String(year), anchor: 'end', isCurrent: year === this.currentYear });
+      } else {
+        const shouldShow = span <= 8 ? true : (span <= 16 ? year % 2 === 0 : year % 5 === 0);
+        const minGap = span <= 8 ? 1 : 2;
+        if (shouldShow && (endYear - year) >= minGap && (year - startYear) >= minGap) {
+          labels.push({ x: barCenterX, text: String(year), anchor: 'middle', isCurrent: year === this.currentYear });
+        }
+      }
+    });
+
+    return labels;
+  }
+
   getAnomalyChipClass(alert: string): string {
     if (alert === 'CRITICAL') return 'chip-critical';
     if (alert === 'ELEVATED') return 'chip-elevated';
     return 'chip-neutral';
+  }
+
+  parseTopDate(val: string | number | undefined): Date | null {
+    if (!val) return null;
+    if (typeof val === 'number') {
+      const ms = val < 10_000_000_000 ? val * 1000 : val;
+      const d = new Date(ms);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    const str = String(val).trim();
+    if (str.includes('T') || str.includes(' ')) {
+      const d = new Date(str.replace(' ', 'T'));
+      if (!isNaN(d.getTime())) return d;
+    }
+    const num = Number(str);
+    if (!isNaN(num) && num > 0) {
+      const ms = num < 10_000_000_000 ? num * 1000 : num;
+      const d = new Date(ms);
+      if (!isNaN(d.getTime())) return d;
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  formatTopDate(val: string | number | undefined): string {
+    const d = this.parseTopDate(val);
+    if (!d) return String(val || '').slice(0, 10);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  formatTopLocalTime(val: string | number | undefined): string {
+    const d = this.parseTopDate(val);
+    if (!d) return '--:--';
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  formatTopUtcTime(val: string | number | undefined): string {
+    const d = this.parseTopDate(val);
+    if (!d) return '--:--';
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    const ss = String(d.getUTCSeconds()).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
   }
 }

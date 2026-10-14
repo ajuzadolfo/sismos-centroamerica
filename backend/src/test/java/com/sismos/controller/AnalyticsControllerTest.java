@@ -92,6 +92,33 @@ class AnalyticsControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/analytics/regional-summary con rango de años válido retorna BIGQUERY")
+    void shouldReturnRegionalSummaryForCustomYearRange() throws Exception {
+        Map<String, Object> mockSummary = Map.of(
+                "dataSource", "BIGQUERY",
+                "timeframe", "2015-2020",
+                "fromYear", 2015,
+                "toYear", 2020,
+                "totalEventsAnalyzed", 3200
+        );
+        when(bigQueryAnalyticsService.getHistoricalRegionalSummary(2015, 2020)).thenReturn(Optional.of(mockSummary));
+
+        mockMvc.perform(get("/api/v1/analytics/regional-summary?fromYear=2015&toYear=2020"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dataSource").value("BIGQUERY"))
+                .andExpect(jsonPath("$.fromYear").value(2015))
+                .andExpect(jsonPath("$.toYear").value(2020));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/analytics/regional-summary con rango invertido retorna HTTP 400")
+    void shouldReturn400ForInvertedYearRange() throws Exception {
+        mockMvc.perform(get("/api/v1/analytics/regional-summary?fromYear=2025&toYear=2015"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value("INVALID_TIMEFRAME"));
+    }
+
+    @Test
     @DisplayName("GET /api/v1/analytics/aftershock-forecast debe retornar pronóstico de Reasenberg-Jones")
     void shouldReturnAftershockForecast() throws Exception {
         Map<String, Object> mockForecast = Map.of(

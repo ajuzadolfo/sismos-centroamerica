@@ -63,6 +63,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Configurar Python para SQLFluff
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validar Sintaxis de Migraciones Flyway (SQLFluff)
+        run: |
+          pip install sqlfluff
+          sqlfluff parse backend/src/main/resources/db/migration/
+
       - name: Revisión de Seguridad de Dependencias (CVEs)
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v4
@@ -259,8 +269,8 @@ jobs:
           fi
           
           echo "Configurando Frontend para conectar a: $BACKEND_URL"
-          sed -i "s|http://localhost:8080/api/v1|${BACKEND_URL}/api/v1|g" frontend/src/environments/environment.ts
-          sed -i "s|http://localhost:8080/ws/seismic|${WS_URL}/ws/seismic|g" frontend/src/environments/environment.ts
+          sed -i -E "s|apiUrl: '[^']*'|apiUrl: '${BACKEND_URL}/api/v1'|g" frontend/src/environments/environment.ts
+          sed -i -E "s|wsUrl: '[^']*'|wsUrl: '${WS_URL}/ws/seismic'|g" frontend/src/environments/environment.ts
 
       - name: Build y Push Docker - Frontend
         uses: docker/build-push-action@v5

@@ -1,0 +1,8 @@
+[sqlfluff]
+dialect = postgres
+templater = raw
+max_line_length = 0
+
+# Excluir reglas de formato y estilística cosmética para centrar la validación
+# estrictamente en el análisis sintáctico (parsing de sentencias, balance de paréntesis y gramática SQL)
+exclude_rules = layout.spacing,layout.indent,layout.functions,layout.commas,capitalisation.keywords,capitalisation.identifiers,capitalisation.functions,capitalisation.literals,structure.column_order,references.consistent,layout.long_lines,ambiguous.distinct
