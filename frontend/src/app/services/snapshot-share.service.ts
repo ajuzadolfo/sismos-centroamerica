@@ -255,13 +255,13 @@ export class SnapshotShareService {
     text: string,
     url: string
   ): Promise<'shared' | 'copied' | 'downloaded'> {
-    const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
+    const nav = typeof navigator !== 'undefined' ? navigator : null;
     if (!nav) return 'copied';
 
     const filename = 'sismo-' + Date.now() + '.png';
 
     // 1. Si soporta compartir archivos nativos (móviles Android / iOS)
-    if (blob && nav.canShare) {
+    if (blob && 'canShare' in nav && typeof nav.canShare === 'function') {
       try {
         const file = new File([blob], filename, { type: 'image/png' });
         if (nav.canShare({ files: [file] })) {
@@ -273,8 +273,8 @@ export class SnapshotShareService {
           });
           return 'shared';
         }
-      } catch (err: any) {
-        if (err.name === 'AbortError') {
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') {
           return 'shared'; // El usuario canceló la hoja de compartición
         }
         console.warn('Web Share API con archivos no admitida en este navegador:', err);
@@ -282,7 +282,7 @@ export class SnapshotShareService {
     }
 
     // 2. Si solo soporta compartir texto / URL
-    if (nav.share) {
+    if ('share' in nav && typeof nav.share === 'function') {
       try {
         await nav.share({
           title,
@@ -290,8 +290,8 @@ export class SnapshotShareService {
           url
         });
         return 'shared';
-      } catch (err: any) {
-        if (err.name === 'AbortError') {
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') {
           return 'shared';
         }
       }

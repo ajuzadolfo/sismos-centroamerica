@@ -6,6 +6,7 @@ import { TranslationService } from '../../services/translation.service';
 import { ShakeMapService, ShakeMapResult } from '../../services/shakemap.service';
 import { SnapshotShareService } from '../../services/snapshot-share.service';
 import { AiBriefingModalComponent } from '../ai-briefing/ai-briefing-modal.component';
+import { EarthquakeDetail } from '../../models/earthquake.model';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -691,7 +692,7 @@ export class DetailPanelComponent {
   reportStatus = signal<'idle' | 'submitting' | 'success' | 'error'>('idle');
   reportMessage = signal<string>('');
 
-  getShakeMapData(event: any): ShakeMapResult {
+  getShakeMapData(event: EarthquakeDetail): ShakeMapResult {
     return this.shakeMapService.generateShakeMap(
       event.longitude,
       event.latitude,
@@ -713,7 +714,7 @@ export class DetailPanelComponent {
     this.reportMessage.set('');
   }
 
-  submitReport(event: any, intensity: number, emoji: string) {
+  submitReport(event: EarthquakeDetail, intensity: number, emoji: string) {
     this.reportStatus.set('submitting');
 
     if (navigator.geolocation) {
@@ -743,7 +744,7 @@ export class DetailPanelComponent {
       clientFingerprint: navigator.userAgent
     };
 
-    this.http.post<any>(`${environment.apiUrl}/earthquakes/${eventId}/reports`, payload).subscribe({
+    this.http.post<{ distanceToEpicenterMeters?: number }>(`${environment.apiUrl}/earthquakes/${eventId}/reports`, payload).subscribe({
       next: (res) => {
         const km = res.distanceToEpicenterMeters ? Math.round(res.distanceToEpicenterMeters / 1000) : 0;
         this.reportStatus.set('success');
@@ -765,9 +766,9 @@ export class DetailPanelComponent {
 
   snapshotService = inject(SnapshotShareService);
   shareToast = signal<string | null>(null);
-  private toastTimeout: any = null;
+  private toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  async shareEventLink(event: any) {
+  async shareEventLink(event: EarthquakeDetail) {
     const map = this.snapshotService.getActiveMap();
     const zoom = map ? map.getZoom() : 6.5;
     const url = this.snapshotService.buildShareUrl({
@@ -783,7 +784,7 @@ export class DetailPanelComponent {
     }
   }
 
-  async shareEventSnapshot(event: any) {
+  async shareEventSnapshot(event: EarthquakeDetail) {
     const map = this.snapshotService.getActiveMap();
     if (!map) {
       this.shareEventLink(event);

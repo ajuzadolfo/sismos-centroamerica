@@ -819,7 +819,6 @@ export class MapComponent implements OnInit, OnDestroy {
       this.shareToast.set(null);
     }, 3500);
   }
-  }
 
   private setup3DTerrain() {
     if (!this.map) return;

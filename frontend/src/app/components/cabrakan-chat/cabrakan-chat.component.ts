@@ -6,19 +6,27 @@ import { TranslationService } from '../../services/translation.service';
 import { SnapshotShareService } from '../../services/snapshot-share.service';
 import { environment } from '../../../environments/environment';
 
+export interface CabrakanMapAction {
+  type?: string;
+  lat?: number;
+  lon?: number;
+  zoom?: number;
+  pitch?: number;
+  eventId?: string;
+}
+
+export interface CabrakanChatResponseDto {
+  reply: string;
+  suggestedQuestions?: string[];
+  mapAction?: CabrakanMapAction | null;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
-  mapAction?: {
-    type?: string;
-    lat?: number;
-    lon?: number;
-    zoom?: number;
-    pitch?: number;
-    eventId?: string;
-  } | null;
+  mapAction?: CabrakanMapAction | null;
 }
 
 @Component({
@@ -557,7 +565,7 @@ export class CabrakanChatComponent {
       history
     };
 
-    this.http.post<any>(`${environment.apiUrl}/chat/cabrakan`, payload).subscribe({
+    this.http.post<CabrakanChatResponseDto>(`${environment.apiUrl}/chat/cabrakan`, payload).subscribe({
       next: (res) => {
         const assistantMsg: ChatMessage = {
           id: 'asst-' + Date.now(),
@@ -584,7 +592,7 @@ export class CabrakanChatComponent {
           this.flyToMapAction(res.mapAction);
         }
       },
-      error: (err) => {
+      error: (_err) => {
         const fallbackMsg: ChatMessage = {
           id: 'asst-err-' + Date.now(),
           role: 'assistant',
@@ -598,7 +606,7 @@ export class CabrakanChatComponent {
     });
   }
 
-  flyToMapAction(action: any) {
+  flyToMapAction(action: CabrakanMapAction) {
     const map = this.snapshotService.getActiveMap();
     if (!map || action.lat === undefined || action.lon === undefined) return;
 

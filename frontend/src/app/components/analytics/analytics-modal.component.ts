@@ -4,6 +4,69 @@ import { HttpClient } from '@angular/common/http';
 import { TranslationService } from '../../services/translation.service';
 import { environment } from '../../../environments/environment';
 
+export interface AnalyticsTop10Event {
+  eventId: string;
+  title?: string;
+  place?: string;
+  magnitude: number;
+  magnitudeType?: string;
+  depthKm: number;
+  latitude: number;
+  longitude: number;
+  eventTime: string;
+  usgsUrl?: string;
+}
+
+export interface AnalyticsYearlyItem {
+  year: number;
+  count: number;
+}
+
+export interface RegionalSummaryResponse {
+  totalCount?: number;
+  maxMagnitude?: number;
+  avgDepth?: number;
+  dataSource?: string;
+  fromYear?: number;
+  toYear?: number;
+  windowStart?: string;
+  windowEnd?: string;
+  queryLatencyMs?: number;
+  byCountry?: Record<string, number>;
+  eventsPerDay?: number;
+  [key: string]: unknown;
+}
+
+export interface AftershockForecastResponse {
+  status?: string;
+  forecastWindowDays?: number;
+  expectedAftershocksM4?: number;
+  expectedAftershocksM5?: number;
+  probabilityM5Plus?: number;
+  probabilityM6Plus?: number;
+  mainshockMagnitude?: number;
+  mainshockPlace?: string;
+  mainshockTime?: string;
+  [key: string]: unknown;
+}
+
+export interface HistoricalInsightsResponse {
+  completenessMagnitude?: number;
+  bValue?: number;
+  aValue?: number;
+  top10?: AnalyticsTop10Event[];
+  yearlySeries?: AnalyticsYearlyItem[];
+  countryAnomaly?: Array<{
+    iso2: string;
+    country: string;
+    count30d: number;
+    historicalMean30d: number;
+    ratio: number;
+    alertLevel: string;
+  }>;
+  [key: string]: unknown;
+}
+
 @Component({
   selector: 'app-analytics-modal',
   standalone: true,
@@ -1236,9 +1299,9 @@ export class AnalyticsModalComponent implements OnInit {
 
   readonly loading = signal<boolean>(true);
   readonly errorMessage = signal<string | null>(null);
-  readonly summary = signal<any>(null);
-  readonly forecast = signal<any>(null);
-  readonly insights = signal<any>(null);
+  readonly summary = signal<RegionalSummaryResponse | null>(null);
+  readonly forecast = signal<AftershockForecastResponse | null>(null);
+  readonly insights = signal<HistoricalInsightsResponse | null>(null);
 
   ngOnInit() {
     this.loadData(this.activeTimeframe());
@@ -1262,7 +1325,7 @@ export class AnalyticsModalComponent implements OnInit {
     const tf = this.activeTimeframe();
 
     let csv = 'rank,event_id,magnitude,magnitude_type,depth_km,latitude,longitude,place,event_time_utc,usgs_url\n';
-    top10.forEach((ev: any, idx: number) => {
+    top10.forEach((ev: AnalyticsTop10Event, idx: number) => {
       csv += `${idx + 1},"${ev.eventId}",${ev.magnitude},"${ev.magnitudeType || ''}",${ev.depthKm},${ev.latitude},${ev.longitude},"${(ev.place || '').replace(/"/g, '""')}","${ev.eventTime}","${ev.usgsUrl}"\n`;
     });
 
@@ -1279,7 +1342,7 @@ export class AnalyticsModalComponent implements OnInit {
 
     const geojson = {
       type: 'FeatureCollection',
-      features: top10.map((ev: any, idx: number) => ({
+      features: top10.map((ev: AnalyticsTop10Event, idx: number) => ({
         type: 'Feature',
         geometry: {
           type: 'Point',
@@ -1375,7 +1438,7 @@ export class AnalyticsModalComponent implements OnInit {
       url += `&country=${this.selectedCountry()}`;
     }
 
-    this.http.get<any>(url).subscribe({
+    this.http.get<RegionalSummaryResponse>(url).subscribe({
       next: (data) => {
         this.summary.set(data);
         this.loading.set(false);
@@ -1405,7 +1468,7 @@ export class AnalyticsModalComponent implements OnInit {
     if (this.selectedCountry() !== 'ALL') {
       url += `&country=${this.selectedCountry()}`;
     }
-    this.http.get<any>(url).subscribe({
+    this.http.get<HistoricalInsightsResponse>(url).subscribe({
       next: (data) => this.insights.set(data),
       error: () => {
         this.insights.set(null);
@@ -1445,7 +1508,7 @@ export class AnalyticsModalComponent implements OnInit {
   }
 
   private loadForecast() {
-    this.http.get<any>(`${environment.apiUrl}/analytics/aftershock-forecast`).subscribe({
+    this.http.get<AftershockForecastResponse>(`${environment.apiUrl}/analytics/aftershock-forecast`).subscribe({
       next: (data) => {
         if (data.status !== 'NO_ACTIVE_MAJOR_EVENT') {
           this.forecast.set(data);
@@ -1458,7 +1521,7 @@ export class AnalyticsModalComponent implements OnInit {
   }
 
   getCountryList(): { name: string; count: number; percentage: number }[] {
-    const dist = this.summary()?.countryDistribution;
+    const dist = this.summary()?.countryDistribution as Record<string, number> | undefined;
     if (!dist) return [];
 
     const isEn = this.transService.currentLang() === 'en';
@@ -1487,13 +1550,13 @@ export class AnalyticsModalComponent implements OnInit {
   getYearlyBars(): { x: number; y: number; width: number; height: number; year: number; count: number }[] {
     const series = this.insights()?.yearlySeries;
     if (!series || !series.length) return [];
-    const maxCount = Math.max(1, ...series.map((s: any) => Number(s.count) || 0));
+    const maxCount = Math.max(1, ...series.map((s: AnalyticsYearlyItem) => Number(s.count) || 0));
     const total = series.length;
     const chartW = 530;
     const chartH = 80;
     const barW = Math.max(3, Math.floor(chartW / total) - 2);
 
-    return series.map((s: any, i: number) => {
+    return series.map((s: AnalyticsYearlyItem, i: number) => {
       const cnt = Number(s.count) || 0;
       const h = Math.max(2, Math.round((cnt / maxCount) * chartH));
       const x = 5 + i * (chartW / total);
@@ -1514,7 +1577,7 @@ export class AnalyticsModalComponent implements OnInit {
 
     const labels: { x: number; text: string; anchor: 'start' | 'middle' | 'end'; isCurrent: boolean }[] = [];
 
-    series.forEach((s: any, i: number) => {
+    series.forEach((s: AnalyticsYearlyItem, i: number) => {
       const year = Number(s.year);
       const isStart = year === startYear;
       const isEnd = year === endYear;
