@@ -28,7 +28,7 @@ FROM (
       ROW_NUMBER() OVER(PARTITION BY e.event_id, e.event_time ORDER BY cb.iso2) AS rn
     FROM `sismos_analytics.earthquake_catalog` e
     JOIN `sismos_analytics.country_boundaries` cb
-      ON ST_CONTAINS(cb.geom, e.point_geom)
+      ON ST_CONTAINS(cb.geom, ST_GEOGPOINT(e.longitude, e.latitude))
   ),
   offshore_matches AS (
     SELECT
@@ -37,11 +37,11 @@ FROM (
       CASE WHEN cb.iso2 IN ('MX', 'BZ', 'CO') THEN 'EXT' ELSE cb.iso2 END AS assigned_code,
       ROW_NUMBER() OVER(
         PARTITION BY e.event_id, e.event_time 
-        ORDER BY ST_DISTANCE(cb.geom, e.point_geom) ASC
+        ORDER BY ST_DISTANCE(cb.geom, ST_GEOGPOINT(e.longitude, e.latitude)) ASC
       ) AS rn
     FROM `sismos_analytics.earthquake_catalog` e
     JOIN `sismos_analytics.country_boundaries` cb
-      ON ST_DWITHIN(cb.geom, e.point_geom, 100000)
+      ON ST_DWITHIN(cb.geom, ST_GEOGPOINT(e.longitude, e.latitude), 100000)
     LEFT JOIN (SELECT event_id, event_time FROM land_matches WHERE rn = 1) lm
       ON e.event_id = lm.event_id AND e.event_time = lm.event_time
     WHERE lm.event_id IS NULL
