@@ -35,8 +35,8 @@ public class BigQueryAnalyticsService {
         return bigQueryEnabled;
     }
 
-    @org.springframework.cache.annotation.Cacheable(value = "historicalSummary", unless = "#result == null")
-    public Optional<Map<String, Object>> getHistoricalRegionalSummary() {
+    @org.springframework.cache.annotation.Cacheable(value = "historicalSummary", key = "'summary_' + #fromYear + '_' + #toYear", unless = "#result == null")
+    public Optional<Map<String, Object>> getHistoricalRegionalSummary(Integer fromYear, Integer toYear) {
         if (!bigQueryEnabled) {
             return Optional.empty();
         }
@@ -47,7 +47,17 @@ public class BigQueryAnalyticsService {
         }
 
         long startNs = System.nanoTime();
-        String query = """
+
+        int startY = (fromYear != null && fromYear >= 1980) ? fromYear : 1980;
+        int currentY = java.time.Year.now().getValue();
+        int endY = (toYear != null && toYear <= currentY) ? toYear : currentY;
+        boolean hasFilter = (fromYear != null || toYear != null);
+
+        String whereClause = hasFilter
+                ? String.format(Locale.US, "WHERE event_time >= TIMESTAMP(DATE(%d, 1, 1)) AND event_time < TIMESTAMP(DATE(%d, 1, 1))", startY, endY + 1)
+                : "";
+
+        String query = String.format("""
             SELECT
               COUNT(1) AS total_events,
               MIN(event_time) AS min_time,
@@ -68,7 +78,8 @@ public class BigQueryAnalyticsService {
               COUNTIF(depth_km >= 30 AND depth_km <= 70) AS depth_intermediate,
               COUNTIF(depth_km > 70) AS depth_deep
             FROM `sismos_analytics.earthquake_catalog_latest`
-            """;
+            %s
+            """, whereClause);
 
         try {
             QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query)
@@ -84,8 +95,20 @@ public class BigQueryAnalyticsService {
             long total = row.get("total_events").getLongValue();
             if (total == 0) return Optional.empty();
 
-            String minTime = !row.get("min_time").isNull() ? row.get("min_time").getStringValue() : "1980-01-01T00:00:00Z";
-            String maxTime = !row.get("max_time").isNull() ? row.get("max_time").getStringValue() : java.time.Instant.now().toString();
+            String minTime;
+            if (!row.get("min_time").isNull()) {
+                long sec = (long) (row.get("min_time").getTimestampValue() / 1_000_000L);
+                minTime = java.time.Instant.ofEpochSecond(sec).toString();
+            } else {
+                minTime = startY + "-01-01T00:00:00Z";
+            }
+            String maxTime;
+            if (!row.get("max_time").isNull()) {
+                long sec = (long) (row.get("max_time").getTimestampValue() / 1_000_000L);
+                maxTime = java.time.Instant.ofEpochSecond(sec).toString();
+            } else {
+                maxTime = endY + "-12-31T23:59:59Z";
+            }
 
             Map<String, Integer> countryDistribution = new LinkedHashMap<>();
             countryDistribution.put("Guatemala", (int) row.get("gt_count").getLongValue());
@@ -112,7 +135,9 @@ public class BigQueryAnalyticsService {
 
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("dataSource", "BIGQUERY");
-            summary.put("timeframe", "40y");
+            summary.put("timeframe", hasFilter ? (startY + "-" + endY) : "40y");
+            summary.put("fromYear", startY);
+            summary.put("toYear", endY);
             summary.put("windowStart", minTime);
             summary.put("windowEnd", maxTime);
             summary.put("totalEventsAnalyzed", total);
@@ -129,6 +154,10 @@ public class BigQueryAnalyticsService {
         }
     }
 
+    public Optional<Map<String, Object>> getHistoricalRegionalSummary() {
+        return getHistoricalRegionalSummary(null, null);
+    }
+
     private String mapCountryCode(String code) {
         return switch (code) {
             case "GT" -> "Guatemala";
@@ -142,8 +171,8 @@ public class BigQueryAnalyticsService {
         };
     }
 
-    @org.springframework.cache.annotation.Cacheable(value = "historicalInsights", unless = "#result == null")
-    public Optional<Map<String, Object>> getHistoricalInsights(Map<String, Integer> recentCountsM45) {
+    @org.springframework.cache.annotation.Cacheable(value = "historicalInsights", key = "'insights_' + #fromYear + '_' + #toYear", unless = "#result == null")
+    public Optional<Map<String, Object>> getHistoricalInsights(Map<String, Integer> recentCountsM45, Integer fromYear, Integer toYear) {
         if (!bigQueryEnabled) {
             return Optional.empty();
         }
@@ -155,17 +184,29 @@ public class BigQueryAnalyticsService {
 
         long startNs = System.nanoTime();
 
+        int startY = (fromYear != null && fromYear >= 1980) ? fromYear : 1980;
+        int currentY = java.time.Year.now().getValue();
+        int endY = (toYear != null && toYear <= currentY) ? toYear : currentY;
+        boolean hasFilter = (fromYear != null || toYear != null);
+
+        String timeFilter = hasFilter
+                ? String.format(Locale.US, "AND event_time >= TIMESTAMP(DATE(%d, 1, 1)) AND event_time < TIMESTAMP(DATE(%d, 1, 1))", startY, endY + 1)
+                : "";
+        String whereTimeFilter = hasFilter
+                ? String.format(Locale.US, "WHERE event_time >= TIMESTAMP(DATE(%d, 1, 1)) AND event_time < TIMESTAMP(DATE(%d, 1, 1))", startY, endY + 1)
+                : "";
+
         try {
             // 1. Histograma de magnitud para encontrar Mc por máxima curvatura
-            String histQuery = """
+            String histQuery = String.format("""
                 SELECT 
                   ROUND(CAST(magnitude AS FLOAT64), 1) AS mag_bin,
                   COUNT(1) AS bin_count
                 FROM `sismos_analytics.earthquake_catalog_latest`
-                WHERE magnitude >= 2.0 AND magnitude <= 9.0
+                WHERE magnitude >= 2.0 AND magnitude <= 9.0 %s
                 GROUP BY 1
                 ORDER BY 1 ASC
-                """;
+                """, timeFilter);
 
             TableResult histResult = client.query(QueryJobConfiguration.newBuilder(histQuery)
                     .setUseQueryCache(true)
@@ -193,8 +234,8 @@ public class BigQueryAnalyticsService {
                   MIN(event_time) AS min_time,
                   MAX(event_time) AS max_time
                 FROM `sismos_analytics.earthquake_catalog_latest`
-                WHERE CAST(magnitude AS FLOAT64) >= %.1f
-                """, mc);
+                WHERE CAST(magnitude AS FLOAT64) >= %.1f %s
+                """, mc, timeFilter);
 
             TableResult mleResult = client.query(QueryJobConfiguration.newBuilder(mleQuery)
                     .setUseQueryCache(true)
@@ -238,10 +279,10 @@ public class BigQueryAnalyticsService {
                   EXTRACT(YEAR FROM event_time) AS event_year,
                   COUNT(1) AS year_count
                 FROM `sismos_analytics.earthquake_catalog_latest`
-                WHERE CAST(magnitude AS FLOAT64) >= %.1f
+                WHERE CAST(magnitude AS FLOAT64) >= %.1f %s
                 GROUP BY 1
                 ORDER BY 1 ASC
-                """, mc);
+                """, mc, timeFilter);
 
             TableResult yearlyResult = client.query(QueryJobConfiguration.newBuilder(yearlyQuery)
                     .setUseQueryCache(true)
@@ -257,7 +298,7 @@ public class BigQueryAnalyticsService {
             }
 
             // 4. Top 10 sismos históricos
-            String top10Query = """
+            String top10Query = String.format("""
                 SELECT 
                   event_id,
                   COALESCE(title, 'M ' || CAST(magnitude AS STRING)) AS title,
@@ -265,13 +306,14 @@ public class BigQueryAnalyticsService {
                   CAST(magnitude AS FLOAT64) AS magnitude,
                   COALESCE(magnitude_type, 'mw') AS magnitude_type,
                   CAST(depth_km AS FLOAT64) AS depth_km,
-                  FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', event_time) AS event_time,
+                  FORMAT_TIMESTAMP('%%Y-%%m-%%dT%%H:%%M:%%SZ', event_time) AS event_time,
                   latitude,
                   longitude
                 FROM `sismos_analytics.earthquake_catalog_latest`
+                %s
                 ORDER BY magnitude DESC, event_time DESC
                 LIMIT 10
-                """;
+                """, whereTimeFilter);
 
             TableResult top10Result = client.query(QueryJobConfiguration.newBuilder(top10Query)
                     .setUseQueryCache(true)
@@ -309,14 +351,14 @@ public class BigQueryAnalyticsService {
             }
 
             // 5. Comparativa de anomalía por país (M >= 4.5)
-            String countryHistQuery = """
+            String countryHistQuery = String.format("""
                 SELECT 
                   COALESCE(country_code, 'OC') AS country_code,
                   COUNT(1) AS total_count
                 FROM `sismos_analytics.earthquake_catalog_latest`
-                WHERE CAST(magnitude AS FLOAT64) >= 4.5
+                WHERE CAST(magnitude AS FLOAT64) >= 4.5 %s
                 GROUP BY 1
-                """;
+                """, timeFilter);
 
             TableResult countryHistResult = client.query(QueryJobConfiguration.newBuilder(countryHistQuery)
                     .setUseQueryCache(true)
@@ -362,6 +404,9 @@ public class BigQueryAnalyticsService {
             long queryLatencyMs = (System.nanoTime() - startNs) / 1_000_000L;
 
             Map<String, Object> insights = new LinkedHashMap<>();
+            insights.put("timeframe", hasFilter ? (startY + "-" + endY) : "40y");
+            insights.put("fromYear", startY);
+            insights.put("toYear", endY);
             insights.put("completenessMc", mc);
             insights.put("bValue", bValue);
             insights.put("bValueStdErr", bStdErr);
@@ -377,5 +422,9 @@ public class BigQueryAnalyticsService {
             log.warn("[BigQuery GIS] Error generando insights históricos: {}", e.getMessage(), e);
             return Optional.empty();
         }
+    }
+
+    public Optional<Map<String, Object>> getHistoricalInsights(Map<String, Integer> recentCountsM45) {
+        return getHistoricalInsights(recentCountsM45, null, null);
     }
 }
