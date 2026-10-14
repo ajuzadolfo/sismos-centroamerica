@@ -49,10 +49,10 @@ import { environment } from '../../../environments/environment';
             <div class="spinner"></div>
             <p>{{ transService.currentLang() === 'en' ? 'Aggregating regional spatial statistics...' : 'Compilando estadísticas espaciales de la región...' }}</p>
           </div>
-        } @else if (errorMessage(); as err) {
+        } @else if (errorMessage()) {
           <div class="error-state">
             <span class="error-icon">⚠️</span>
-            <p>{{ err }}</p>
+            <p>{{ errorMessage() }}</p>
             <button id="analytics-retry-btn" class="retry-btn" (click)="loadData(activeTimeframe())">
               🔄 {{ transService.currentLang() === 'en' ? 'Retry' : 'Reintentar' }}
             </button>
@@ -994,7 +994,9 @@ export class AnalyticsModalComponent implements OnInit {
     if (this.insights()) return;
     this.http.get<any>(`${environment.apiUrl}/analytics/historical-insights`).subscribe({
       next: (data) => this.insights.set(data),
-      error: () => {}
+      error: () => {
+        this.insights.set(null);
+      }
     });
   }
 
@@ -1033,7 +1035,9 @@ export class AnalyticsModalComponent implements OnInit {
           this.forecast.set(data);
         }
       },
-      error: () => {}
+      error: () => {
+        this.forecast.set(null);
+      }
     });
   }
 

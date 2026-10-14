@@ -435,7 +435,7 @@ export class TranslationService {
         if (saved === 'es' || saved === 'en') {
           return saved;
         }
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
