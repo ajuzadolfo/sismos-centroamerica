@@ -63,6 +63,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Configurar Python para SQLFluff
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validar Sintaxis de Migraciones Flyway (SQLFluff)
+        run: |
+          pip install sqlfluff
+          sqlfluff parse backend/src/main/resources/db/migration/
+
       - name: Revisión de Seguridad de Dependencias (CVEs)
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v4
