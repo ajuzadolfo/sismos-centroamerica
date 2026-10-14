@@ -14,6 +14,7 @@ import { EarthquakeService } from '../../services/earthquake.service';
 import { AudioAlertService } from '../../services/audio-alert.service';
 import { TranslationService } from '../../services/translation.service';
 import { ShakeMapService } from '../../services/shakemap.service';
+import { SnapshotShareService } from '../../services/snapshot-share.service';
 import { SeismographHudComponent } from './seismograph-hud.component';
 import { environment } from '../../../environments/environment';
 import { GeoJsonFeature } from '../../models/earthquake.model';
@@ -154,7 +155,22 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
           </svg>
           <span>{{ is3DMode() ? transService.tr().camera.mode3d : transService.tr().camera.mode2d }}</span>
         </button>
+
+        <button
+          class="share-action-btn"
+          (click)="shareCurrentView()"
+          [title]="transService.currentLang() === 'en' ? 'Share current map view or snapshot' : 'Compartir vista actual o captura'">
+          <span class="share-icon">📸</span>
+          <span>{{ transService.currentLang() === 'en' ? 'Share' : 'Compartir' }}</span>
+        </button>
       </div>
+
+      <!-- Toast flotante de compartición -->
+      @if (shareToast()) {
+        <div class="share-toast-banner glass-panel">
+          {{ shareToast() }}
+        </div>
+      }
 
       <!-- Osciloscopio Sísmico y HUD de Telemetría -->
       <app-seismograph-hud
@@ -346,6 +362,55 @@ function createPulsingDot(map: Map, size = 160, rgbColor = '0, 240, 255') {
       box-shadow: 0 0 14px rgba(0, 240, 255, 0.3);
     }
 
+    .share-action-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 11px;
+      background: rgba(0, 240, 255, 0.15);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      border-radius: 20px;
+      color: #00f0ff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: var(--font-sans);
+    }
+
+    .share-action-btn:hover {
+      background: rgba(0, 240, 255, 0.28);
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.45);
+    }
+
+    .share-icon {
+      font-size: 0.75rem;
+    }
+
+    .share-toast-banner {
+      position: absolute;
+      top: 148px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      padding: 8px 20px;
+      border-radius: 20px;
+      background: rgba(8, 14, 26, 0.95);
+      border: 1px solid #00f0ff;
+      box-shadow: 0 4px 24px rgba(0, 240, 255, 0.35);
+      color: #ffffff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      animation: fadeInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translate(-50%, -10px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+
     .loading-overlay {
       position: absolute;
       top: 92px;
@@ -511,6 +576,7 @@ export class MapComponent implements OnInit, OnDestroy {
   audioService = inject(AudioAlertService);
   transService = inject(TranslationService);
   shakeMapService = inject(ShakeMapService);
+  snapshotService = inject(SnapshotShareService);
 
   private map: Map | null = null;
   private activePopup: Popup | null = null;
@@ -521,8 +587,10 @@ export class MapComponent implements OnInit, OnDestroy {
   is3DMode = signal<boolean>(false);
   isOrbitActive = signal<boolean>(false);
   activePreset = signal<'todo' | 'trinchera' | 'norte' | 'sur'>('todo');
+  shareToast = signal<string | null>(null);
 
   private orbitAnimationId: number | null = null;
+  private toastTimeout: any = null;
 
   constructor() {
     // Efecto reactivo con Angular Signals: actualiza sismos y columnas 3D
@@ -569,6 +637,7 @@ export class MapComponent implements OnInit, OnDestroy {
           source.setData({ type: 'FeatureCollection', features: [] });
         }
       }
+      this.syncUrlState();
     });
   }
 
@@ -578,6 +647,9 @@ export class MapComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.stopOrbitLoop();
+    if (this.toastTimeout) {
+      clearTimeout(this.toastTimeout);
+    }
     if (this.map) {
       this.map.remove();
     }
@@ -588,15 +660,33 @@ export class MapComponent implements OnInit, OnDestroy {
       setWorkerUrl(`${window.location.origin}/maplibre-gl-worker.mjs`);
     }
 
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const initialLat = (urlParams && urlParams.has('lat')) ? parseFloat(urlParams.get('lat')!) : 13.5;
+    const initialLon = (urlParams && urlParams.has('lon')) ? parseFloat(urlParams.get('lon')!) : -86.5;
+    const initialZoom = (urlParams && urlParams.has('zoom')) ? parseFloat(urlParams.get('zoom')!) : 5.6;
+    const initialPitch = (urlParams && urlParams.has('pitch')) ? parseFloat(urlParams.get('pitch')!) : 0;
+    const initialBearing = (urlParams && urlParams.has('bearing')) ? parseFloat(urlParams.get('bearing')!) : 0;
+    const initialPreset = urlParams?.get('preset') as any;
+    const initialEventId = urlParams?.get('event') || null;
+
+    if (initialPreset && ['todo', 'trinchera', 'norte', 'sur'].includes(initialPreset)) {
+      this.activePreset.set(initialPreset);
+    }
+
     this.map = new Map({
       container: this.mapContainer.nativeElement,
       style: environment.cartoDarkStyle,
-      center: [-86.5, 13.5], // Centroamérica
-      zoom: 5.6,
+      center: [initialLon, initialLat],
+      zoom: initialZoom,
+      pitch: initialPitch,
+      bearing: initialBearing,
       minZoom: 3,
       maxZoom: 16,
-      maxPitch: 75
+      maxPitch: 75,
+      preserveDrawingBuffer: true
     });
+
+    this.snapshotService.registerMap(this.map);
 
     this.map.addControl(new NavigationControl({ showCompass: true, visualizePitch: true }), 'top-right');
     this.map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left');
@@ -618,6 +708,9 @@ export class MapComponent implements OnInit, OnDestroy {
       this.earthquakeService.loadRecentEarthquakes().subscribe({
         next: () => {
           this.updateMapData(this.earthquakeService.filteredEarthquakes());
+          if (initialEventId) {
+            this.earthquakeService.selectEarthquake(initialEventId);
+          }
         }
       });
     });
@@ -648,6 +741,84 @@ export class MapComponent implements OnInit, OnDestroy {
 
     this.map.on('pitchend', updateCameraState);
     this.map.on('rotateend', updateCameraState);
+    this.map.on('moveend', () => {
+      updateCameraState();
+      this.syncUrlState();
+    });
+  }
+
+  private syncUrlState() {
+    if (!this.map || typeof window === 'undefined') return;
+    const center = this.map.getCenter();
+    const zoom = this.map.getZoom();
+    const pitch = this.map.getPitch();
+    const bearing = this.map.getBearing();
+    const selected = this.earthquakeService.selectedEarthquake();
+
+    const shareUrl = this.snapshotService.buildShareUrl({
+      eventId: selected ? selected.id : null,
+      lat: center.lat,
+      lon: center.lng,
+      zoom,
+      pitch,
+      bearing,
+      preset: this.activePreset()
+    });
+
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, '', shareUrl);
+    }
+  }
+
+  async shareCurrentView() {
+    if (!this.map) return;
+    const center = this.map.getCenter();
+    const zoom = this.map.getZoom();
+    const pitch = this.map.getPitch();
+    const bearing = this.map.getBearing();
+    const selected = this.earthquakeService.selectedEarthquake();
+
+    const shareUrl = this.snapshotService.buildShareUrl({
+      eventId: selected ? selected.id : null,
+      lat: center.lat,
+      lon: center.lng,
+      zoom,
+      pitch,
+      bearing,
+      preset: this.activePreset()
+    });
+
+    try {
+      const blob = await this.snapshotService.generateSnapshot(this.map, selected);
+      const title = selected
+        ? `Sismo M ${selected.magnitude} - ${selected.place || 'Centroamérica'}`
+        : 'Monitor Sísmico de Centroamérica';
+      const text = selected
+        ? `Monitoreo geodinámico en tiempo real por Fozna Solutions. Prof: ${selected.depth} km.`
+        : 'Plataforma de monitorización sismológica de Centroamérica en tiempo real.';
+
+      const result = await this.snapshotService.shareSnapshotOrUrl(blob, title, text, shareUrl);
+      if (result === 'copied') {
+        this.showToast(this.transService.currentLang() === 'en' ? 'Link copied to clipboard!' : '¡Enlace copiado al portapapeles!');
+      } else if (result === 'downloaded') {
+        this.showToast(this.transService.currentLang() === 'en' ? 'Snapshot downloaded & link copied!' : '¡Captura descargada y enlace copiado!');
+      } else {
+        this.showToast(this.transService.currentLang() === 'en' ? 'Shared successfully!' : '¡Compartido con éxito!');
+      }
+    } catch (e) {
+      console.error('Error sharing view:', e);
+      await this.snapshotService.copyLinkToClipboard(shareUrl);
+      this.showToast(this.transService.currentLang() === 'en' ? 'Link copied to clipboard!' : '¡Enlace copiado al portapapeles!');
+    }
+  }
+
+  private showToast(msg: string) {
+    this.shareToast.set(msg);
+    if (this.toastTimeout) clearTimeout(this.toastTimeout);
+    this.toastTimeout = setTimeout(() => {
+      this.shareToast.set(null);
+    }, 3500);
+  }
   }
 
   private setup3DTerrain() {

@@ -67,6 +67,31 @@ import { environment } from '../../../environments/environment';
           </button>
         </div>
 
+        <!-- Barra de Filtro por País y Exportación de Datos Abiertos -->
+        <div class="analytics-sub-toolbar">
+          <div class="country-filter-box">
+            <span class="sub-toolbar-lbl">{{ transService.currentLang() === 'en' ? 'Country Filter:' : 'Filtro por País:' }}</span>
+            <select class="country-filter-select" id="analytics-country-select" [value]="selectedCountry()" (change)="onCountryChange($event)">
+              <option value="ALL">{{ transService.currentLang() === 'en' ? '🌎 Central America (All)' : '🌎 Toda Centroamérica' }}</option>
+              <option value="GT">🇬🇹 Guatemala (GT)</option>
+              <option value="SV">🇸🇻 El Salvador (SV)</option>
+              <option value="HN">🇭🇳 Honduras (HN)</option>
+              <option value="NI">🇳🇮 Nicaragua (NI)</option>
+              <option value="CR">🇨🇷 Costa Rica (CR)</option>
+              <option value="PA">🇵🇦 Panamá (PA)</option>
+            </select>
+          </div>
+
+          <div class="export-buttons-group">
+            <button class="btn-data-export" id="analytics-export-csv" (click)="exportToCsv()" [title]="transService.currentLang() === 'en' ? 'Export current dataset to CSV' : 'Exportar catálogo actual a CSV'">
+              <span>📥 CSV</span>
+            </button>
+            <button class="btn-data-export" id="analytics-export-geojson" (click)="exportToGeoJson()" [title]="transService.currentLang() === 'en' ? 'Export geospatial features to GeoJSON' : 'Exportar capa geoespacial a GeoJSON'">
+              <span>🗺️ GeoJSON</span>
+            </button>
+          </div>
+        </div>
+
         @if (activeTimeframe() === 'custom') {
           <div class="custom-range-bar" id="analytics-custom-range-bar">
             <div class="range-inputs">
@@ -729,6 +754,71 @@ import { environment } from '../../../environments/environment';
       box-shadow: 0 0 15px rgba(0, 240, 255, 0.22);
     }
 
+    .analytics-sub-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      flex-wrap: wrap;
+    }
+
+    .country-filter-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sub-toolbar-lbl {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+
+    .country-filter-select {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 6px;
+      color: #ffffff;
+      font-family: var(--font-sans);
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 4px 8px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .export-buttons-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-data-export {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 6px;
+      color: #00f0ff;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-data-export:hover {
+      background: rgba(0, 240, 255, 0.22);
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+    }
+
     .custom-range-bar {
       display: flex;
       align-items: center;
@@ -1142,6 +1232,7 @@ export class AnalyticsModalComponent implements OnInit {
   readonly toYear = signal<number>(new Date().getFullYear());
   readonly currentYear = new Date().getFullYear();
   readonly availableYears = Array.from({ length: new Date().getFullYear() - 1980 + 1 }, (_, i) => 1980 + i);
+  readonly selectedCountry = signal<string>('ALL');
 
   readonly loading = signal<boolean>(true);
   readonly errorMessage = signal<string | null>(null);
@@ -1153,6 +1244,75 @@ export class AnalyticsModalComponent implements OnInit {
     this.loadData(this.activeTimeframe());
     this.loadForecast();
     this.loadInsights(this.activeTimeframe());
+  }
+
+  onCountryChange(event: Event) {
+    const val = (event.target as HTMLSelectElement).value;
+    this.selectedCountry.set(val);
+    this.loadData(this.activeTimeframe());
+    if (this.activeTimeframe() !== '30d') {
+      this.loadInsights(this.activeTimeframe());
+    }
+  }
+
+  exportToCsv() {
+    const ins = this.insights();
+    const top10 = ins?.top10 || [];
+    const country = this.selectedCountry();
+    const tf = this.activeTimeframe();
+
+    let csv = 'rank,event_id,magnitude,magnitude_type,depth_km,latitude,longitude,place,event_time_utc,usgs_url\n';
+    top10.forEach((ev: any, idx: number) => {
+      csv += `${idx + 1},"${ev.eventId}",${ev.magnitude},"${ev.magnitudeType || ''}",${ev.depthKm},${ev.latitude},${ev.longitude},"${(ev.place || '').replace(/"/g, '""')}","${ev.eventTime}","${ev.usgsUrl}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const filename = `sismos-top10-${tf}-${country}.csv`;
+    this.downloadFile(blob, filename);
+  }
+
+  exportToGeoJson() {
+    const ins = this.insights();
+    const top10 = ins?.top10 || [];
+    const country = this.selectedCountry();
+    const tf = this.activeTimeframe();
+
+    const geojson = {
+      type: 'FeatureCollection',
+      features: top10.map((ev: any, idx: number) => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [ev.longitude, ev.latitude]
+        },
+        properties: {
+          rank: idx + 1,
+          id: ev.eventId,
+          title: ev.title,
+          magnitude: ev.magnitude,
+          magnitudeType: ev.magnitudeType,
+          depthKm: ev.depthKm,
+          place: ev.place,
+          time: ev.eventTime,
+          url: ev.usgsUrl
+        }
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/geo+json;charset=utf-8;' });
+    const filename = `sismos-top10-${tf}-${country}.geojson`;
+    this.downloadFile(blob, filename);
+  }
+
+  private downloadFile(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   setTimeframe(tf: '30d' | '5y' | '10y' | '40y' | 'custom') {
@@ -1211,6 +1371,9 @@ export class AnalyticsModalComponent implements OnInit {
     if (tf === 'custom') {
       url = `${environment.apiUrl}/analytics/regional-summary?fromYear=${this.fromYear()}&toYear=${this.toYear()}`;
     }
+    if (this.selectedCountry() !== 'ALL') {
+      url += `&country=${this.selectedCountry()}`;
+    }
 
     this.http.get<any>(url).subscribe({
       next: (data) => {
@@ -1238,6 +1401,9 @@ export class AnalyticsModalComponent implements OnInit {
     let url = `${environment.apiUrl}/analytics/historical-insights?timeframe=${tf}`;
     if (tf === 'custom') {
       url = `${environment.apiUrl}/analytics/historical-insights?fromYear=${this.fromYear()}&toYear=${this.toYear()}`;
+    }
+    if (this.selectedCountry() !== 'ALL') {
+      url += `&country=${this.selectedCountry()}`;
     }
     this.http.get<any>(url).subscribe({
       next: (data) => this.insights.set(data),
