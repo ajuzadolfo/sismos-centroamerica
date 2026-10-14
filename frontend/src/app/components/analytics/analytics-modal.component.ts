@@ -263,7 +263,7 @@ import { environment } from '../../../environments/environment';
                       <span class="top10-mag">M {{ ev.magnitude }}</span>
                       <div class="top10-info">
                         <span class="top10-place">{{ ev.place }}</span>
-                        <span class="top10-meta">{{ ev.eventTime | date:'yyyy-MM-dd' }} · {{ ev.depthKm }} km</span>
+                        <span class="top10-meta">{{ formatTopDate(ev.eventTime) }} · {{ ev.depthKm }} km</span>
                       </div>
                       <span class="top10-link-arrow">↗</span>
                     </a>
@@ -1090,5 +1090,27 @@ export class AnalyticsModalComponent implements OnInit {
     if (alert === 'CRITICAL') return 'chip-critical';
     if (alert === 'ELEVATED') return 'chip-elevated';
     return 'chip-neutral';
+  }
+
+  formatTopDate(val: string | number | undefined): string {
+    if (!val) return '';
+    if (typeof val === 'number') {
+      const ms = val < 10_000_000_000 ? val * 1000 : val;
+      return new Date(ms).toISOString().slice(0, 10);
+    }
+    const str = String(val).trim();
+    if (str.includes('T') || str.includes(' ')) {
+      const d = new Date(str.replace(' ', 'T'));
+      return isNaN(d.getTime()) ? str.slice(0, 10) : d.toISOString().slice(0, 10);
+    }
+    if (str.includes('-')) {
+      return str.slice(0, 10);
+    }
+    const num = Number(str);
+    if (!isNaN(num) && num > 0) {
+      const ms = num < 10_000_000_000 ? num * 1000 : num;
+      return new Date(ms).toISOString().slice(0, 10);
+    }
+    return str;
   }
 }

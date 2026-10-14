@@ -265,7 +265,7 @@ public class BigQueryAnalyticsService {
                   CAST(magnitude AS FLOAT64) AS magnitude,
                   COALESCE(magnitude_type, 'mw') AS magnitude_type,
                   CAST(depth_km AS FLOAT64) AS depth_km,
-                  event_time,
+                  FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', event_time) AS event_time,
                   latitude,
                   longitude
                 FROM `sismos_analytics.earthquake_catalog_latest`
@@ -281,6 +281,19 @@ public class BigQueryAnalyticsService {
             List<Map<String, Object>> top10List = new ArrayList<>();
             for (FieldValueList ev : top10Result.iterateAll()) {
                 String id = ev.get("event_id").getStringValue();
+                String eventTimeIso;
+                try {
+                    String raw = ev.get("event_time").getStringValue();
+                    if (raw.contains("T") || raw.contains("-")) {
+                        eventTimeIso = raw;
+                    } else {
+                        double sec = Double.parseDouble(raw);
+                        eventTimeIso = java.time.Instant.ofEpochMilli((long) (sec * 1000)).toString();
+                    }
+                } catch (Exception e) {
+                    eventTimeIso = ev.get("event_time").getStringValue();
+                }
+
                 top10List.add(Map.of(
                         "eventId", id,
                         "title", ev.get("title").getStringValue(),
@@ -288,7 +301,7 @@ public class BigQueryAnalyticsService {
                         "magnitude", Math.round(ev.get("magnitude").getDoubleValue() * 10.0) / 10.0,
                         "magnitudeType", ev.get("magnitude_type").getStringValue(),
                         "depthKm", Math.round(ev.get("depth_km").getDoubleValue() * 10.0) / 10.0,
-                        "eventTime", ev.get("event_time").getStringValue(),
+                        "eventTime", eventTimeIso,
                         "latitude", ev.get("latitude").getDoubleValue(),
                         "longitude", ev.get("longitude").getDoubleValue(),
                         "usgsUrl", "https://earthquake.usgs.gov/earthquakes/eventpage/" + id
