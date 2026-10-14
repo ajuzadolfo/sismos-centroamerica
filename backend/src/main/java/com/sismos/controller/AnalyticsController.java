@@ -25,7 +25,8 @@ public class AnalyticsController {
     public ResponseEntity<Map<String, Object>> getRegionalSummary(
             @RequestParam(name = "timeframe", defaultValue = "30d") String timeframe,
             @RequestParam(name = "fromYear", required = false) Integer fromYear,
-            @RequestParam(name = "toYear", required = false) Integer toYear) {
+            @RequestParam(name = "toYear", required = false) Integer toYear,
+            @RequestParam(name = "country", required = false) String country) {
 
         int currentYear = java.time.Year.now().getValue();
 
@@ -39,7 +40,9 @@ public class AnalyticsController {
                 ));
             }
             if (bigQueryAnalyticsService.isPresent()) {
-                var bqResult = bigQueryAnalyticsService.get().getHistoricalRegionalSummary(startY, endY);
+                var bqResult = (country != null)
+                        ? bigQueryAnalyticsService.get().getHistoricalRegionalSummary(startY, endY, country)
+                        : bigQueryAnalyticsService.get().getHistoricalRegionalSummary(startY, endY);
                 if (bqResult.isPresent()) {
                     return ResponseEntity.ok(bqResult.get());
                 }
@@ -74,9 +77,11 @@ public class AnalyticsController {
         }
 
         if (bigQueryAnalyticsService.isPresent()) {
-            var bqResult = (rangeFrom != null)
-                    ? bigQueryAnalyticsService.get().getHistoricalRegionalSummary(rangeFrom, rangeTo)
-                    : bigQueryAnalyticsService.get().getHistoricalRegionalSummary();
+            var bqResult = (country != null)
+                    ? bigQueryAnalyticsService.get().getHistoricalRegionalSummary(rangeFrom, rangeTo, country)
+                    : ((rangeFrom != null)
+                        ? bigQueryAnalyticsService.get().getHistoricalRegionalSummary(rangeFrom, rangeTo)
+                        : bigQueryAnalyticsService.get().getHistoricalRegionalSummary());
             if (bqResult.isPresent()) {
                 return ResponseEntity.ok(bqResult.get());
             }
@@ -84,7 +89,7 @@ public class AnalyticsController {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
                 "status", "HISTORICAL_UNAVAILABLE",
                 "message", "El catálogo histórico en BigQuery no se encuentra disponible temporalmente"
-        ));
+            ));
     }
 
     @GetMapping("/aftershock-forecast")
@@ -96,7 +101,8 @@ public class AnalyticsController {
     public ResponseEntity<Map<String, Object>> getHistoricalInsights(
             @RequestParam(name = "fromYear", required = false) Integer fromYear,
             @RequestParam(name = "toYear", required = false) Integer toYear,
-            @RequestParam(name = "timeframe", required = false) String timeframe) {
+            @RequestParam(name = "timeframe", required = false) String timeframe,
+            @RequestParam(name = "country", required = false) String country) {
 
         int currentYear = java.time.Year.now().getValue();
         Integer rangeFrom = fromYear;
@@ -114,9 +120,11 @@ public class AnalyticsController {
 
         if (bigQueryAnalyticsService.isPresent()) {
             Map<String, Integer> recentCountsM45 = postGisAnalyticsService.getRecentCountByCountryM45();
-            var insights = (rangeFrom != null || rangeTo != null)
-                    ? bigQueryAnalyticsService.get().getHistoricalInsights(recentCountsM45, rangeFrom, rangeTo)
-                    : bigQueryAnalyticsService.get().getHistoricalInsights(recentCountsM45);
+            var insights = (country != null)
+                    ? bigQueryAnalyticsService.get().getHistoricalInsights(recentCountsM45, rangeFrom, rangeTo, country)
+                    : ((rangeFrom != null || rangeTo != null)
+                        ? bigQueryAnalyticsService.get().getHistoricalInsights(recentCountsM45, rangeFrom, rangeTo)
+                        : bigQueryAnalyticsService.get().getHistoricalInsights(recentCountsM45));
             if (insights.isPresent()) {
                 return ResponseEntity.ok(insights.get());
             }
