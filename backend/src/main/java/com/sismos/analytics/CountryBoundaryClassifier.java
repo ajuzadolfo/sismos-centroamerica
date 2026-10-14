@@ -101,16 +101,29 @@ public class CountryBoundaryClassifier {
     private Geometry parseMultiPolygon(JsonNode geomNode) {
         String type = geomNode.path("type").asText();
         JsonNode coords = geomNode.path("coordinates");
+        if (!coords.isArray() || coords.isEmpty()) return null;
+
         if ("Polygon".equalsIgnoreCase(type)) {
             Polygon poly = parseSinglePolygon(coords);
             return poly != null ? geometryFactory.createMultiPolygon(new Polygon[]{poly}) : null;
         } else if ("MultiPolygon".equalsIgnoreCase(type)) {
+            // Soporta tanto GeoJSON con coordenadas de 3 niveles [[[lon, lat], ...]]
+            // como formato estándar de 4 niveles [[[[lon, lat], ...]]]]
+            JsonNode first = coords.get(0);
+            if (first.isArray() && !first.isEmpty()) {
+                JsonNode second = first.get(0);
+                if (second.isArray() && !second.isEmpty() && second.get(0).isNumber()) {
+                    Polygon poly = parseSinglePolygon(coords);
+                    return poly != null ? geometryFactory.createMultiPolygon(new Polygon[]{poly}) : null;
+                }
+            }
+
             List<Polygon> polys = new ArrayList<>();
             for (JsonNode polyCoords : coords) {
                 Polygon p = parseSinglePolygon(polyCoords);
                 if (p != null) polys.add(p);
             }
-            return geometryFactory.createMultiPolygon(polys.toArray(new Polygon[0]));
+            return polys.isEmpty() ? null : geometryFactory.createMultiPolygon(polys.toArray(new Polygon[0]));
         }
         return null;
     }
