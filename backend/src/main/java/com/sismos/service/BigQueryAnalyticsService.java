@@ -35,7 +35,7 @@ public class BigQueryAnalyticsService {
         return bigQueryEnabled;
     }
 
-    @org.springframework.cache.annotation.Cacheable(value = "historicalSummary", unless = "#result == null || !#result.isPresent()")
+    @org.springframework.cache.annotation.Cacheable(value = "historicalSummary", unless = "#result == null")
     public Optional<Map<String, Object>> getHistoricalRegionalSummary() {
         if (!bigQueryEnabled) {
             return Optional.empty();
@@ -139,7 +139,7 @@ public class BigQueryAnalyticsService {
         };
     }
 
-    @org.springframework.cache.annotation.Cacheable(value = "historicalInsights", unless = "#result == null || !#result.isPresent()")
+    @org.springframework.cache.annotation.Cacheable(value = "historicalInsights", unless = "#result == null")
     public Optional<Map<String, Object>> getHistoricalInsights(Map<String, Integer> recentCountsM45) {
         if (!bigQueryEnabled) {
             return Optional.empty();
