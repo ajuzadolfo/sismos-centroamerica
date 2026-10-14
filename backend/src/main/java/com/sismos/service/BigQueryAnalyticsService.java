@@ -248,7 +248,7 @@ public class BigQueryAnalyticsService {
                   CAST(magnitude AS FLOAT64) AS magnitude,
                   COALESCE(magnitude_type, 'mw') AS magnitude_type,
                   CAST(depth_km AS FLOAT64) AS depth_km,
-                  FORMAT_TIMESTAMP('%%%%Y-%%%%m-%%%%dT%%%%H:%%%%M:%%%%SZ', event_time) AS event_time,
+                  FORMAT_TIMESTAMP('%%Y-%%m-%%dT%%H:%%M:%%SZ', event_time) AS event_time,
                   latitude,
                   longitude
                 FROM `sismos_analytics.earthquake_catalog_latest`
@@ -257,7 +257,7 @@ public class BigQueryAnalyticsService {
                 LIMIT 10
                 """, combinedWhereFilter);
 
-            // 5. Comparativa de anomalía por país (M >= 4.5, independiente de Mc)
+            // 5. Comparativa de anomalía por país (M >= 4.5, calculada sobre la ventana temporal regional para no sesgar el baseline)
             String countryHistQuery = String.format("""
                 SELECT 
                   COALESCE(country_code, 'OC') AS country_code,
@@ -265,7 +265,7 @@ public class BigQueryAnalyticsService {
                 FROM `sismos_analytics.earthquake_catalog_latest`
                 WHERE CAST(magnitude AS FLOAT64) >= 4.5 %s
                 GROUP BY 1
-                """, combinedTimeFilter);
+                """, timeFilter);
 
             // Etapa 1: Lanzar consultas independientes en paralelo (Virtual Threads)
             CompletableFuture<TableResult> top10Future = CompletableFuture.supplyAsync(() -> {

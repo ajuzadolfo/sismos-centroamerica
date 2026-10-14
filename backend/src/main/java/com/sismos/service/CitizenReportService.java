@@ -18,11 +18,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -39,13 +41,19 @@ public class CitizenReportService {
     @Value("${sismos.reports.time-window-hours:72}")
     private int timeWindowHours;
 
-    private final Map<String, List<Long>> rateLimitMap = new java.util.concurrent.ConcurrentHashMap<>();
+    // Cache con desalojo automático por tiempo y capacidad máxima acotada para evitar fugas de memoria
+    private final Cache<String, List<Long>> rateLimitCache = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofHours(1))
+            .maximumSize(50_000)
+            .build();
 
     private void enforceRateLimit(String fingerprint) {
         long now = System.currentTimeMillis();
         long windowStart = now - (60L * 60L * 1000L); // 1 hora
-        rateLimitMap.compute(fingerprint, (k, timestamps) -> {
-            if (timestamps == null) timestamps = new ArrayList<>();
+        rateLimitCache.asMap().compute(fingerprint, (k, timestamps) -> {
+            if (timestamps == null) {
+                timestamps = new ArrayList<>();
+            }
             timestamps.removeIf(ts -> ts < windowStart);
             if (timestamps.size() >= 5) {
                 throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,

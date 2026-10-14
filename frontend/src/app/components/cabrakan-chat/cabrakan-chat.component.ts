@@ -612,12 +612,18 @@ export class CabrakanChatComponent {
 
   formatMessage(text: string): string {
     if (!text) return '';
-    // Formato básico de markdown
+    // Sanitizar caracteres HTML para prevenir inyecciones XSS
     let formatted = text
-      .replace(/### (.*?)\n/g, '<h4 style="color:#00f0ff;margin:6px 0 3px 0;font-size:0.82rem;">$1</h4>')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // Formato básico de markdown
+    formatted = formatted
+      .replace(/### (.*?)(?:\n|$)/g, '<h4 style="color:#00f0ff;margin:6px 0 3px 0;font-size:0.82rem;">$1</h4>')
       .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#ffffff;">$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\n\* (.*?)/g, '<li style="margin-left:14px;margin-bottom:3px;">$1</li>')
+      .replace(/(?:\n|^)\* (.*?)/g, '<li style="margin-left:14px;margin-bottom:3px;">$1</li>')
       .replace(/\n/g, '<br/>');
     return formatted;
   }

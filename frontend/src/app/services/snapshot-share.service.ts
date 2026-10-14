@@ -122,10 +122,14 @@ export class SnapshotShareService {
     this.drawFooterLegend(ctx, width, height, scale);
 
     return new Promise((resolve, reject) => {
-      outCanvas.toBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error('Fallo al exportar el Blob de la imagen'));
-      }, 'image/png');
+      try {
+        outCanvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Fallo al exportar el Blob de la imagen'));
+        }, 'image/png');
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 

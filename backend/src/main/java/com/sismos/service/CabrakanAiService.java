@@ -128,8 +128,12 @@ public class CabrakanAiService {
         List<SeismicEvent> recent = seismicEventRepository.findTop50ByOrderByTimeDesc();
         if (!recent.isEmpty()) {
             SeismicEvent latest = recent.get(0);
+            double mag = latest.getMagnitude() != null ? latest.getMagnitude().doubleValue() : 0.0;
+            String place = latest.getPlace() != null ? latest.getPlace() : "Centroamérica";
+            double depth = latest.getDepth() != null ? latest.getDepth().doubleValue() : 0.0;
+            String time = latest.getTime() != null ? latest.getTime().toString() : "Reciente";
             userPrompt += String.format(Locale.US, "\n[Contexto en Vivo: Último sismo M %.1f en %s, prof: %.1f km, fecha: %s]",
-                    latest.getMagnitude(), latest.getPlace(), latest.getDepth(), latest.getTime());
+                    mag, place, depth, time);
         }
 
         String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
