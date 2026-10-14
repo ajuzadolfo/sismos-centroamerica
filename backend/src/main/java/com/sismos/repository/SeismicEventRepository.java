@@ -63,5 +63,83 @@ public interface SeismicEventRepository extends JpaRepository<SeismicEvent, Stri
             @Param("repLon") double repLon,
             @Param("repLat") double repLat
     );
+
+    // Agregación regional de 30 días en PostGIS con clasificación por fronteras oficiales
+    @Query(value = """
+        SELECT
+            COALESCE(
+                CASE 
+                    WHEN assigned.iso2 = 'GT' THEN 'Guatemala'
+                    WHEN assigned.iso2 = 'SV' THEN 'El Salvador'
+                    WHEN assigned.iso2 = 'HN' THEN 'Honduras'
+                    WHEN assigned.iso2 = 'NI' THEN 'Nicaragua'
+                    WHEN assigned.iso2 = 'CR' THEN 'Costa Rica'
+                    WHEN assigned.iso2 = 'PA' THEN 'Panamá'
+                    WHEN assigned.iso2 IN ('MX', 'BZ', 'CO') THEN 'Fuera de Centroamérica'
+                    ELSE 'Otros / Océano'
+                END,
+                'Otros / Océano'
+            ) AS countryLabel,
+            COUNT(*) AS totalCount,
+            COUNT(*) FILTER (WHERE e.magnitude < 3.5) AS magMenor,
+            COUNT(*) FILTER (WHERE e.magnitude >= 3.5 AND e.magnitude < 4.5) AS magModerado,
+            COUNT(*) FILTER (WHERE e.magnitude >= 4.5 AND e.magnitude < 6.0) AS magFuerte,
+            COUNT(*) FILTER (WHERE e.magnitude >= 6.0) AS magMayor,
+            COUNT(*) FILTER (WHERE e.depth < 30) AS someros,
+            COUNT(*) FILTER (WHERE e.depth >= 30 AND e.depth <= 70) AS intermedios,
+            COUNT(*) FILTER (WHERE e.depth > 70) AS profundos
+        FROM seismic_events e
+        LEFT JOIN LATERAL (
+            SELECT cb.iso2
+            FROM country_boundaries cb
+            WHERE ST_Contains(cb.geom, e.geom)
+            UNION ALL
+            SELECT cb_near.iso2
+            FROM country_boundaries cb_near
+            WHERE NOT EXISTS (SELECT 1 FROM country_boundaries c1 WHERE ST_Contains(c1.geom, e.geom))
+              AND ST_DWithin(cb_near.geom::geography, e.geom::geography, 100000)
+            ORDER BY ST_Distance(cb_near.geom::geography, e.geom::geography) ASC
+            LIMIT 1
+        ) assigned ON TRUE
+        WHERE e.time >= :since
+        GROUP BY 1
+        """, nativeQuery = true)
+    List<com.sismos.repository.projection.RegionalSummaryRow> getRegionalSummaryAggregation(@Param("since") Instant since);
+
+    @Query(value = """
+        SELECT
+            COALESCE(
+                CASE 
+                    WHEN assigned.iso2 = 'GT' THEN 'GT'
+                    WHEN assigned.iso2 = 'SV' THEN 'SV'
+                    WHEN assigned.iso2 = 'HN' THEN 'HN'
+                    WHEN assigned.iso2 = 'NI' THEN 'NI'
+                    WHEN assigned.iso2 = 'CR' THEN 'CR'
+                    WHEN assigned.iso2 = 'PA' THEN 'PA'
+                    ELSE 'OC'
+                END,
+                'OC'
+            ) AS countryIso,
+            COUNT(*) AS countM45
+        FROM seismic_events e
+        LEFT JOIN LATERAL (
+            SELECT cb.iso2
+            FROM country_boundaries cb
+            WHERE ST_Contains(cb.geom, e.geom)
+            UNION ALL
+            SELECT cb_near.iso2
+            FROM country_boundaries cb_near
+            WHERE NOT EXISTS (SELECT 1 FROM country_boundaries c1 WHERE ST_Contains(c1.geom, e.geom))
+              AND ST_DWithin(cb_near.geom::geography, e.geom::geography, 100000)
+            ORDER BY ST_Distance(cb_near.geom::geography, e.geom::geography) ASC
+            LIMIT 1
+        ) assigned ON TRUE
+        WHERE e.time >= :since AND e.magnitude >= :minMag
+        GROUP BY 1
+        """, nativeQuery = true)
+    List<com.sismos.repository.projection.CountryCountRow> countRecentEventsByCountry(
+            @Param("since") Instant since,
+            @Param("minMag") BigDecimal minMag
+    );
 }
 

@@ -51,19 +51,51 @@ EOF
   depends_on = [google_bigquery_dataset.sismos_analytics]
 }
 
-# 3. Suscripción Nativa Pub/Sub a BigQuery para Ingesta en Streaming Directo
+# 3. Vista Deduplicada del Catálogo Histórico y en Tiempo Real
+resource "google_bigquery_table" "earthquake_catalog_latest" {
+  dataset_id = google_bigquery_dataset.sismos_analytics.dataset_id
+  table_id   = "earthquake_catalog_latest"
+
+  description = "Vista deduplicada del catálogo sísmico que conserva la solución sismológica más reciente de cada evento"
+
+  view {
+    query          = <<EOF
+SELECT * FROM `${var.project_id}.${google_bigquery_dataset.sismos_analytics.dataset_id}.${google_bigquery_table.earthquake_catalog.table_id}`
+WHERE TRUE
+QUALIFY ROW_NUMBER() OVER (PARTITION BY event_id ORDER BY updated_time DESC, ingested_at DESC) = 1
+EOF
+    use_legacy_sql = false
+  }
+
+  depends_on = [google_bigquery_table.earthquake_catalog]
+}
+
+# 4. Tópico Dead Letter Queue para Errores de Streaming Pub/Sub a BigQuery
+resource "google_pubsub_topic" "seismic_events_bq_dlq" {
+  name       = "seismic-events-bq-dlq"
+  depends_on = [google_project_service.enabled_apis]
+}
+
+# 5. Suscripción Nativa Pub/Sub a BigQuery para Ingesta en Streaming Directo con Schema de Tabla
 resource "google_pubsub_subscription" "bigquery_export_sub" {
   name  = "seismic-events-bigquery-sub"
   topic = google_pubsub_topic.seismic_events_topic.id
 
   bigquery_config {
-    table            = "${var.project_id}.${google_bigquery_dataset.sismos_analytics.dataset_id}.${google_bigquery_table.earthquake_catalog.table_id}"
-    use_topic_schema = false
-    write_metadata   = true
+    table               = "${var.project_id}.${google_bigquery_dataset.sismos_analytics.dataset_id}.${google_bigquery_table.earthquake_catalog.table_id}"
+    use_table_schema    = true
+    write_metadata      = false
+    drop_unknown_fields = true
+  }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.seismic_events_bq_dlq.id
+    max_delivery_attempts = 5
   }
 
   depends_on = [
     google_bigquery_table.earthquake_catalog,
-    google_pubsub_topic.seismic_events_topic
+    google_pubsub_topic.seismic_events_topic,
+    google_pubsub_topic.seismic_events_bq_dlq
   ]
 }

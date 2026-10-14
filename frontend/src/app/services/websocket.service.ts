@@ -26,7 +26,7 @@ export class WebSocketService {
       heartbeatOutgoing: 25000
     });
 
-    this.stompClient.onConnect = (frame) => {
+    this.stompClient.onConnect = (_frame) => {
       this.isConnected.set(true);
       this.connectionStatusText.set('EN VIVO');
 
@@ -65,7 +65,7 @@ export class WebSocketService {
       this.connectionStatusText.set('DESCONECTADO');
     };
 
-    this.stompClient.onStompError = (frame) => {
+    this.stompClient.onStompError = (_frame) => {
       this.isConnected.set(false);
       this.connectionStatusText.set('RECONECTANDO...');
     };

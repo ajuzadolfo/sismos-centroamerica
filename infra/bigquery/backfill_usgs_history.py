@@ -37,25 +37,11 @@ BBOX = {
 
 USGS_FDSN_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
 
-def classify_country(lat: float, lon: float) -> str:
-    """Clasificación geográfica estándar para países centroamericanos"""
-    if lon < -89.5 and lat >= 13.7:
-        return "GT"  # Guatemala
-    if -90.2 <= lon < -87.7 and 13.0 <= lat <= 14.5:
-        return "SV"  # El Salvador
-    if -89.0 <= lon < -83.5 and 13.5 < lat <= 16.5:
-        return "HN"  # Honduras
-    if -87.8 <= lon < -83.0 and 10.8 <= lat <= 15.0:
-        return "NI"  # Nicaragua
-    if -86.0 <= lon < -82.5 and 8.0 <= lat <= 11.2:
-        return "CR"  # Costa Rica
-    if -83.1 <= lon <= -77.0 and 7.0 <= lat <= 9.8:
-        return "PA"  # Panamá
-    return "OC"      # Océano / Zona de Subducción
-
-
 def transform_feature(feature: dict) -> dict:
-    """Convierte una GeoJSON Feature de USGS al esquema de BigQuery earthquake_catalog"""
+    """Convierte una GeoJSON Feature de USGS al esquema de BigQuery earthquake_catalog.
+    Descarta eventos con magnitud nula. La clasificación de países se delega a BigQuery
+    mediante infra/bigquery/04_reclassify_countries.sql sobre sismos_analytics.country_boundaries.
+    """
     props = feature.get("properties") or {}
     geom = feature.get("geometry") or {}
     coords = geom.get("coordinates") or [0.0, 0.0, 10.0]
@@ -64,13 +50,17 @@ def transform_feature(feature: dict) -> dict:
     lat = float(coords[1])
     depth = float(coords[2]) if len(coords) > 2 else 10.0
 
+    mag_raw = props.get("mag")
+    if mag_raw is None:
+        return None  # Descartar eventos sin magnitud válida (no inventar 3.0)
+
+    mag = float(mag_raw)
+
     epoch_ms = props.get("time") or int(time.time() * 1000)
     event_time_iso = datetime.datetime.fromtimestamp(epoch_ms / 1000.0, tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
     updated_ms = props.get("updated")
     updated_time_iso = datetime.datetime.fromtimestamp(updated_ms / 1000.0, tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S") if updated_ms else None
-
-    mag = float(props.get("mag")) if props.get("mag") is not None else 3.0
 
     return {
         "event_id": feature.get("id"),
@@ -86,7 +76,7 @@ def transform_feature(feature: dict) -> dict:
         "significance": int(props.get("sig") or 100),
         "latitude": lat,
         "longitude": lon,
-        "country_code": classify_country(lat, lon),
+        "country_code": None,  # Asignado posteriormente por 04_reclassify_countries.sql
         "ingested_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     }
 
@@ -121,7 +111,11 @@ def fetch_year(year: int) -> list:
                 data = json.loads(resp.read().decode("utf-8"))
                 features = data.get("features", [])
                 logger.info(f"Año {year}: {len(features)} eventos recuperados.")
-                return [transform_feature(f) for f in features]
+                transformed = [transform_feature(f) for f in features]
+                valid_events = [ev for ev in transformed if ev is not None]
+                if len(transformed) != len(valid_events):
+                    logger.info(f"Año {year}: {len(transformed) - len(valid_events)} eventos descartados por carecer de magnitud.")
+                return valid_events
         except Exception as e:
             logger.warning(f"Intento {attempt + 1}/3 falló para el año {year}: {e}")
             time.sleep(2 * (attempt + 1))
@@ -150,7 +144,10 @@ def main():
 
     logger.info(f"✅ Descarga completada con éxito. Total eventos exportados: {total_events}")
     logger.info(f"Archivo guardado en: {args.output_file}")
-    logger.info(f"Para cargar en BigQuery ejecuta:\n  bq load --source_format=NEWLINE_DELIMITED_JSON sismos_analytics.earthquake_catalog {args.output_file}")
+    logger.info("Pasos siguientes para BigQuery:")
+    logger.info(f"  1. Cargar catálogo:\n     bq load --source_format=NEWLINE_DELIMITED_JSON sismos_analytics.earthquake_catalog {args.output_file}")
+    logger.info("  2. Ejecutar script de clasificación de países geográfica real:")
+    logger.info("     bq query --use_legacy_sql=false < infra/bigquery/04_reclassify_countries.sql")
 
 
 if __name__ == "__main__":

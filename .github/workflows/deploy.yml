@@ -196,12 +196,27 @@ jobs:
             --clear-secrets \
             --quiet || true
 
-          GEMINI_SECRET_ARG=""
+          SECRETS_LIST=()
           if gcloud secrets describe gemini-api-key --project="${{ env.PROJECT_ID }}" >/dev/null 2>&1; then
             echo "Secreto gemini-api-key detectado en Secret Manager. Inyectando en Cloud Run..."
-            GEMINI_SECRET_ARG="--set-secrets=GEMINI_API_KEY=gemini-api-key:latest"
+            SECRETS_LIST+=("GEMINI_API_KEY=gemini-api-key:latest")
           else
             echo "Secreto gemini-api-key no presente. Operando con generador geocientífico de respaldo."
+          fi
+
+          if gcloud secrets describe vapid-private-key --project="${{ env.PROJECT_ID }}" >/dev/null 2>&1 && \
+             gcloud secrets describe vapid-public-key  --project="${{ env.PROJECT_ID }}" >/dev/null 2>&1; then
+            echo "Secretos VAPID detectados en Secret Manager. Inyectando en Cloud Run..."
+            SECRETS_LIST+=("VAPID_PUBLIC_KEY=vapid-public-key:latest" "VAPID_PRIVATE_KEY=vapid-private-key:latest")
+          else
+            echo "Secretos VAPID no presentes en Secret Manager."
+          fi
+
+          SECRETS_ARG=""
+          if [ ${#SECRETS_LIST[@]} -gt 0 ]; then
+            IFS=','
+            SECRETS_ARG="--set-secrets=${SECRETS_LIST[*]}"
+            unset IFS
           fi
 
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
@@ -221,7 +236,7 @@ jobs:
             --subnet="${{ env.VPC_SUBNET }}" \
             --vpc-egress=private-ranges-only \
             --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_IP}:5432/sismos_db,SPRING_DATASOURCE_USERNAME=sismos_app,SPRING_DATASOURCE_PASSWORD=${DB_PASS},SPRING_CLOUD_GCP_BIGQUERY_ENABLED=true,SPRING_CLOUD_GCP_PUBSUB_ENABLED=true,PROJECT_ID=${{ env.PROJECT_ID }}" \
-            $GEMINI_SECRET_ARG \
+            $SECRETS_ARG \
             --quiet
 
       # 5. Obtener URL pública del Backend

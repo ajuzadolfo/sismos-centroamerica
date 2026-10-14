@@ -118,7 +118,7 @@ export class EarthquakeService {
   getEarthquakeDetail(id: string): Observable<EarthquakeDetail> {
     return this.http.get<EarthquakeDetail>(`${environment.apiUrl}/earthquakes/${id}`).pipe(
       tap(detail => this.selectedEarthquake.set(detail)),
-      catchError(err => {
+      catchError(_err => {
         // Fallback resiliente: construir detalle con la información disponible en memoria
         const cached = this.earthquakes().find(e => e.id === id);
         if (cached) {

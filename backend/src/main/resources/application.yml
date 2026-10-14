@@ -60,7 +60,7 @@ gemini:
 
 vapid:
   public:
-    key: ${VAPID_PUBLIC_KEY:BCLDJ6-o41_0doRq_jjiaPmmMVrDAkNVMeckn-hwgdzPA6TsqRABI45mo_aKzFyXbPk37q0YurOxyODttS5ElF4}
+    key: ${VAPID_PUBLIC_KEY:}
   private:
-    key: ${VAPID_PRIVATE_KEY:hc5N0RBCs5pP2P_k9CMsWEDrlv_TZlFl6HzNttbw3aQ}
+    key: ${VAPID_PRIVATE_KEY:}
   subject: ${VAPID_SUBJECT:mailto:soporte@foznasolutions.com}
