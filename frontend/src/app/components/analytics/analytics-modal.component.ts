@@ -238,9 +238,17 @@ import { environment } from '../../../environments/environment';
                         <title>{{ bar.year }}: {{ bar.count }} {{ transService.currentLang() === 'en' ? 'events' : 'sismos' }} (M ≥ {{ ins.completenessMc }})</title>
                       </rect>
                     }
-                    <text x="5" y="98" class="chart-axis-lbl">1980</text>
-                    <text x="250" y="98" class="chart-axis-lbl">2003</text>
-                    <text x="500" y="98" class="chart-axis-lbl">2026</text>
+                    <line x1="5" y1="89" x2="535" y2="89" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" />
+                    @for (lbl of getYearlyAxisLabels(); track lbl.text) {
+                      <text 
+                        [attr.x]="lbl.x" 
+                        y="98" 
+                        [attr.text-anchor]="lbl.anchor"
+                        [class.current-year]="lbl.isCurrent"
+                        class="chart-axis-lbl">
+                        {{ lbl.text }}
+                      </text>
+                    }
                   </svg>
                 </div>
               </div>
@@ -864,8 +872,14 @@ import { environment } from '../../../environments/environment';
 
     .chart-axis-lbl {
       fill: #64748b;
-      font-size: 9px;
+      font-size: 8px;
       font-family: var(--font-mono);
+      user-select: none;
+    }
+
+    .chart-axis-lbl.current-year {
+      fill: #00f0ff;
+      font-weight: 700;
     }
 
     .top10-list {
@@ -1084,6 +1098,37 @@ export class AnalyticsModalComponent implements OnInit {
       const y = 88 - h;
       return { x, y, width: barW, height: h, year: s.year, count: cnt };
     });
+  }
+
+  getYearlyAxisLabels(): { x: number; text: string; anchor: 'start' | 'middle' | 'end'; isCurrent: boolean }[] {
+    const series = this.insights()?.yearlySeries;
+    if (!series || !series.length) return [];
+
+    const total = series.length;
+    const chartW = 530;
+    const startYear = Number(series[0].year);
+    const endYear = Number(series[series.length - 1].year);
+
+    const labels: { x: number; text: string; anchor: 'start' | 'middle' | 'end'; isCurrent: boolean }[] = [];
+
+    series.forEach((s: any, i: number) => {
+      const year = Number(s.year);
+      const isStart = year === startYear;
+      const isEnd = year === endYear;
+      const isFiveYear = year % 5 === 0;
+
+      const barCenterX = 5 + i * (chartW / total) + Math.max(3, Math.floor(chartW / total) - 2) / 2;
+
+      if (isStart) {
+        labels.push({ x: 5, text: String(year), anchor: 'start', isCurrent: false });
+      } else if (isEnd) {
+        labels.push({ x: 535, text: String(year), anchor: 'end', isCurrent: true });
+      } else if (isFiveYear && (endYear - year) >= 3 && (year - startYear) >= 3) {
+        labels.push({ x: barCenterX, text: String(year), anchor: 'middle', isCurrent: false });
+      }
+    });
+
+    return labels;
   }
 
   getAnomalyChipClass(alert: string): string {
