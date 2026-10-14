@@ -39,6 +39,23 @@ public class CitizenReportService {
     @Value("${sismos.reports.time-window-hours:72}")
     private int timeWindowHours;
 
+    private final Map<String, List<Long>> rateLimitMap = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private void enforceRateLimit(String fingerprint) {
+        long now = System.currentTimeMillis();
+        long windowStart = now - (60L * 60L * 1000L); // 1 hora
+        rateLimitMap.compute(fingerprint, (k, timestamps) -> {
+            if (timestamps == null) timestamps = new ArrayList<>();
+            timestamps.removeIf(ts -> ts < windowStart);
+            if (timestamps.size() >= 5) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "Has alcanzado el límite máximo de reportes permitidos por hora (máximo 5). Por favor intenta más tarde.");
+            }
+            timestamps.add(now);
+            return timestamps;
+        });
+    }
+
     /**
      * Calcula el radio máximo físicamente admisible de percepción humana en metros
      * en función de la magnitud del sismo.
@@ -65,6 +82,8 @@ public class CitizenReportService {
         String fingerprint = (request.getClientFingerprint() != null && !request.getClientFingerprint().isBlank())
                 ? request.getClientFingerprint().trim()
                 : (clientIp != null ? clientIp.trim() : "anonymous-client");
+
+        enforceRateLimit(fingerprint);
 
         if (citizenReportRepository.existsByEventIdAndClientFingerprint(eventId, fingerprint)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,

@@ -137,5 +137,10 @@ public interface SeismicEventRepository extends JpaRepository<SeismicEvent, Stri
             @Param("since") Instant since,
             @Param("minMag") BigDecimal minMag
     );
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query(value = "DELETE FROM seismic_events WHERE time < :cutoffTime", nativeQuery = true)
+    int deleteEventsOlderThan(@Param("cutoffTime") Instant cutoffTime);
 }
 
