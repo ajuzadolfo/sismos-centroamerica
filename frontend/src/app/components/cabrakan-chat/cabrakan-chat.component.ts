@@ -695,6 +695,31 @@ export class CabrakanChatComponent {
         body: JSON.stringify(payload)
       });
 
+      if (response.status === 429) {
+        let rateLimitText = this.transService.currentLang() === 'en'
+          ? '⏳ Rate limit reached (max 10 queries/min). Please wait a few seconds before asking Cabrakán AI again.'
+          : '⏳ Has alcanzado el límite de consultas (máx. 10/minuto). Por favor, espera unos segundos antes de volver a preguntar a Cabrakán AI.';
+        try {
+          const errData = await response.json();
+          if (this.transService.currentLang() === 'en' && errData.messageEn) {
+            rateLimitText = `⏳ ${errData.messageEn}`;
+          } else if (errData.message) {
+            rateLimitText = `⏳ ${errData.message}`;
+          }
+        } catch {
+          // Mantener mensaje amigable por defecto si la respuesta no es JSON
+        }
+        const rateLimitMsg: ChatMessage = {
+          id: 'asst-rl-' + Date.now(),
+          role: 'assistant',
+          content: rateLimitText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          modelUsed: 'rate-limited'
+        };
+        this.messages.update(list => [...list, rateLimitMsg]);
+        return;
+      }
+
       if (!response.ok || !response.body) {
         throw new Error('Streaming failed: ' + response.status);
       }

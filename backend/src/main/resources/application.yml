@@ -65,3 +65,11 @@ vapid:
   private:
     key: ${VAPID_PRIVATE_KEY:}
   subject: ${VAPID_SUBJECT:mailto:soporte@foznasolutions.com}
+
+cabrakan:
+  rate-limit:
+    enabled: ${CABRAKAN_RATE_LIMIT_ENABLED:true}
+    capacity: ${CABRAKAN_RATE_LIMIT_CAPACITY:10}
+    refill-tokens: ${CABRAKAN_RATE_LIMIT_REFILL_TOKENS:10}
+    refill-duration-minutes: ${CABRAKAN_RATE_LIMIT_REFILL_DURATION_MINUTES:1}
+
