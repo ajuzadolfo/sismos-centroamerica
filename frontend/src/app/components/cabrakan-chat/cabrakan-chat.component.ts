@@ -1,8 +1,8 @@
-import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { TranslationService } from '../../services/translation.service';
+import { TranslationService, Language } from '../../services/translation.service';
 import { SnapshotShareService } from '../../services/snapshot-share.service';
 import { environment } from '../../../environments/environment';
 
@@ -585,20 +585,54 @@ export class CabrakanChatComponent {
   isGenerating = signal<boolean>(false);
   userInput = '';
 
-  suggestions = signal<string[]>([
-    '¿Cuáles son los sismos más fuertes de la historia?',
-    '¿Cómo funciona la subducción de Cocos bajo el Caribe?',
-    '¿Qué precauciones tomar ante una secuencia de réplicas?'
-  ]);
+  private getWelcomeMessage(lang: Language): string {
+    return lang === 'en'
+      ? 'Greetings! I am **Cabrakán AI**, your geoscientific assistant specialized in Central America.\nI am being actively developed by Fozna Solutions as a pilot project.\nAsk me about any seismic event.'
+      : '¡Saludos! Soy **Cabrakán AI**, tu asistente geocientífico especializado en Centroamérica.\nEstoy siendo activamente desarrollado por Fozna Solutions como proyecto piloto.\nPregúntame sobre cualquier evento sísmico.';
+  }
+
+  private getInitialSuggestions(lang: Language): string[] {
+    return lang === 'en'
+      ? [
+          'What are the strongest earthquakes recorded in history?',
+          'How does the Cocos plate subduct beneath the Caribbean plate?',
+          'What precautions should be taken during aftershocks?'
+        ]
+      : [
+          '¿Cuáles son los sismos más fuertes de la historia?',
+          '¿Cómo funciona la subducción de Cocos bajo el Caribe?',
+          '¿Qué precauciones tomar ante una secuencia de réplicas?'
+        ];
+  }
+
+  suggestions = signal<string[]>(this.getInitialSuggestions(this.transService.currentLang()));
 
   messages = signal<ChatMessage[]>([
     {
       id: 'init-1',
       role: 'assistant',
-      content: '¡Saludos! Soy **Cabrakán AI**, tu asistente geocientífico especializado en la dinámica tectónica y sismológica de Centroamérica. Pregúntame sobre cualquier sismo reciente, catálogos históricos, fallas o protocolos de emergencia.',
+      content: this.getWelcomeMessage(this.transService.currentLang()),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
+
+  constructor() {
+    effect(() => {
+      const lang = this.transService.currentLang();
+      const current = this.messages();
+      if (current.length === 1 && current[0].id === 'init-1') {
+        this.messages.set([
+          {
+            id: 'init-1',
+            role: 'assistant',
+            content: this.getWelcomeMessage(lang),
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
+        this.suggestions.set(this.getInitialSuggestions(lang));
+      }
+    });
+  }
 
   toggleChat() {
     this.isOpen.set(!this.isOpen());
