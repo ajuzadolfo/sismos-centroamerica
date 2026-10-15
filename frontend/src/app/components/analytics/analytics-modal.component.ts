@@ -24,6 +24,7 @@ export interface AnalyticsYearlyItem {
 
 export interface RegionalSummaryResponse {
   totalCount?: number;
+  totalEventsAnalyzed?: number;
   maxMagnitude?: number;
   avgDepth?: number;
   dataSource?: string;
@@ -32,24 +33,40 @@ export interface RegionalSummaryResponse {
   windowStart?: string;
   windowEnd?: string;
   queryLatencyMs?: number;
-  byCountry?: Record<string, number>;
   countryDistribution?: Record<string, number>;
+  magnitudeDistribution?: {
+    menor?: number;
+    moderado?: number;
+    fuerte?: number;
+    mayor?: number;
+  };
+  depthDistribution?: {
+    shallowUnder30Km?: number;
+    intermediate30to70Km?: number;
+    deepOver70Km?: number;
+  };
   eventsPerDay?: number;
+}
+
+export interface ForecastWindowData {
+  expectedCountM4?: number;
+  expectedCountM5?: number;
+  probabilityM5Plus?: string;
+  probabilityM6Plus?: string;
 }
 
 export interface AftershockForecastResponse {
   status?: string;
-  forecastWindowDays?: number;
-  expectedAftershocksM4?: number;
-  expectedAftershocksM5?: number;
-  probabilityM5Plus?: number;
-  probabilityM6Plus?: number;
+  mainshockTitle?: string;
   mainshockMagnitude?: number;
   mainshockPlace?: string;
   mainshockTime?: string;
+  forecastWindow24h?: ForecastWindowData;
+  forecastWindow48h?: ForecastWindowData;
+  forecastWindow72h?: ForecastWindowData;
 }
 
-export interface CountryAnomalyItem {
+export interface AnomalyRatioItem {
   iso2: string;
   country: string;
   count30d: number;
@@ -60,14 +77,18 @@ export interface CountryAnomalyItem {
 
 export interface HistoricalInsightsResponse {
   completenessMagnitude?: number;
+  completenessMc?: number;
+  completenessNote?: string;
   bValue?: number;
+  bValueStdErr?: number;
   aValue?: number;
   fromYear?: number;
   toYear?: number;
   queryLatencyMs?: number;
   top10?: AnalyticsTop10Event[];
   yearlySeries?: AnalyticsYearlyItem[];
-  countryAnomaly?: CountryAnomalyItem[];
+  anomalyRatios?: AnomalyRatioItem[];
+  countryAnomaly?: AnomalyRatioItem[];
 }
 
 @Component({
@@ -86,7 +107,7 @@ export interface HistoricalInsightsResponse {
               <span class="sub-badge">
                 {{ getBadgeText() }}
                 @if (summary()?.queryLatencyMs !== undefined && summary()?.queryLatencyMs !== null) {
-                  <span class="latency-badge">({{ summary().queryLatencyMs }} ms)</span>
+                  <span class="latency-badge">({{ summary()?.queryLatencyMs }} ms)</span>
                 }
               </span>
             </div>
