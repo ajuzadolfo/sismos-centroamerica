@@ -136,7 +136,8 @@ public class CabrakanAiService {
                     mag, place, depth, time);
         }
 
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
+        String cleanApiKey = geminiApiKey.trim();
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + cleanApiKey;
 
         Map<String, Object> body = Map.of(
                 "systemInstruction", Map.of("parts", List.of(Map.of("text", systemInstruction))),
@@ -152,6 +153,7 @@ public class CabrakanAiService {
         String rawJson = restClient.post()
                 .uri(url)
                 .header("Content-Type", "application/json")
+                .header("x-goog-api-key", cleanApiKey)
                 .body(body)
                 .retrieve()
                 .body(String.class);
