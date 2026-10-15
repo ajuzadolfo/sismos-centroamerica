@@ -33,8 +33,8 @@ export interface RegionalSummaryResponse {
   windowEnd?: string;
   queryLatencyMs?: number;
   byCountry?: Record<string, number>;
+  countryDistribution?: Record<string, number>;
   eventsPerDay?: number;
-  [key: string]: unknown;
 }
 
 export interface AftershockForecastResponse {
@@ -47,7 +47,6 @@ export interface AftershockForecastResponse {
   mainshockMagnitude?: number;
   mainshockPlace?: string;
   mainshockTime?: string;
-  [key: string]: unknown;
 }
 
 export interface CountryAnomalyItem {
@@ -63,10 +62,12 @@ export interface HistoricalInsightsResponse {
   completenessMagnitude?: number;
   bValue?: number;
   aValue?: number;
+  fromYear?: number;
+  toYear?: number;
+  queryLatencyMs?: number;
   top10?: AnalyticsTop10Event[];
   yearlySeries?: AnalyticsYearlyItem[];
   countryAnomaly?: CountryAnomalyItem[];
-  [key: string]: unknown;
 }
 
 @Component({

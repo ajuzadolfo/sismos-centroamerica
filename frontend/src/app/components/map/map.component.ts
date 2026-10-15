@@ -683,7 +683,9 @@ export class MapComponent implements OnInit, OnDestroy {
       minZoom: 3,
       maxZoom: 16,
       maxPitch: 75,
-      preserveDrawingBuffer: true
+      canvasContextAttributes: {
+        preserveDrawingBuffer: true
+      }
     });
 
     this.snapshotService.registerMap(this.map);

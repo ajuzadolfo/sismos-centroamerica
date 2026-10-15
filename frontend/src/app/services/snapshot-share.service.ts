@@ -186,7 +186,7 @@ export class SnapshotShareService {
 
     // Hora Local UTC-6 y UTC
     const dateUtc = new Date(event.time);
-    const dateLocal = new Date(event.time - 6 * 3600 * 1000);
+    const dateLocal = new Date(dateUtc.getTime() - 6 * 3600 * 1000);
     const timeStr = `UTC-6: ${dateLocal.toISOString().substring(11, 19)} | UTC: ${dateUtc.toISOString().substring(11, 19)}`;
     ctx.fillText(timeStr, cardX + 18 * scale, cardY + 106 * scale);
 
