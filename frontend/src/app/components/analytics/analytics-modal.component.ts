@@ -50,20 +50,22 @@ export interface AftershockForecastResponse {
   [key: string]: unknown;
 }
 
+export interface CountryAnomalyItem {
+  iso2: string;
+  country: string;
+  count30d: number;
+  historicalMean30d: number;
+  ratio: number;
+  alertLevel: string;
+}
+
 export interface HistoricalInsightsResponse {
   completenessMagnitude?: number;
   bValue?: number;
   aValue?: number;
   top10?: AnalyticsTop10Event[];
   yearlySeries?: AnalyticsYearlyItem[];
-  countryAnomaly?: Array<{
-    iso2: string;
-    country: string;
-    count30d: number;
-    historicalMean30d: number;
-    ratio: number;
-    alertLevel: string;
-  }>;
+  countryAnomaly?: CountryAnomalyItem[];
   [key: string]: unknown;
 }
 

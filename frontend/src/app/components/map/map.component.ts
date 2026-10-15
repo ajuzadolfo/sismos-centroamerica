@@ -840,8 +840,9 @@ export class MapComponent implements OnInit, OnDestroy {
       });
 
       // 3. Atmósfera de horizonte y cielo cinemático
-      if (typeof (this.map as any).setSky === 'function') {
-        (this.map as any).setSky({
+      const mapExt = this.map as unknown as { setSky?: (options: Record<string, unknown>) => void };
+      if (typeof mapExt.setSky === 'function') {
+        mapExt.setSky({
           'sky-color': '#020617',
           'sky-horizon-blend': 0.6,
           'horizon-color': '#00f0ff',
