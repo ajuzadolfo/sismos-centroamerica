@@ -4,7 +4,9 @@ import { HttpClient } from '@angular/common/http';
 import { EarthquakeService } from '../../services/earthquake.service';
 import { TranslationService } from '../../services/translation.service';
 import { ShakeMapService, ShakeMapResult } from '../../services/shakemap.service';
+import { SnapshotShareService } from '../../services/snapshot-share.service';
 import { AiBriefingModalComponent } from '../ai-briefing/ai-briefing-modal.component';
+import { EarthquakeDetail } from '../../models/earthquake.model';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -140,11 +142,29 @@ import { environment } from '../../../environments/environment';
             </div>
           }
 
-          <!-- Botón de Análisis Fozna AI (Gemini 2.5 Flash) -->
+          <!-- Botón de Análisis Fozna AI (Gemini 3.8 Flash) -->
           <button class="btn-ai-analysis" (click)="isAiModalOpen.set(true)">
             <span class="sparkle">✨</span>
-            <span>{{ transService.currentLang() === 'en' ? 'Fozna AI Seismic Briefing (Gemini 2.5)' : 'Informe Sísmico Fozna AI (Gemini 2.5)' }}</span>
+            <span>{{ transService.currentLang() === 'en' ? 'Fozna AI Seismic Briefing (Gemini 3.8)' : 'Informe Sísmico Fozna AI (Gemini 3.8)' }}</span>
           </button>
+
+          <!-- Acciones de Compartición Social y Captura de ShakeMap -->
+          <div class="share-actions-group">
+            <button class="btn-share-link" (click)="shareEventLink(event)" [title]="transService.currentLang() === 'en' ? 'Copy permanent link' : 'Copiar enlace permanente'">
+              <span>🔗</span>
+              <span>{{ transService.currentLang() === 'en' ? 'Share Link' : 'Compartir Enlace' }}</span>
+            </button>
+            <button class="btn-share-snapshot" (click)="shareEventSnapshot(event)" [title]="transService.currentLang() === 'en' ? 'Capture & share ShakeMap image' : 'Capturar y compartir imagen ShakeMap'">
+              <span>📸</span>
+              <span>{{ transService.currentLang() === 'en' ? 'ShakeMap Card' : 'Tarjeta ShakeMap' }}</span>
+            </button>
+          </div>
+
+          @if (shareToast()) {
+            <div class="panel-share-toast">
+              ✓ {{ shareToast() }}
+            </div>
+          }
         </div>
       </div>
 
@@ -517,6 +537,60 @@ import { environment } from '../../../environments/environment';
       font-size: 0.95rem;
     }
 
+    .share-actions-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .btn-share-link,
+    .btn-share-snapshot {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-share-link:hover {
+      background: rgba(0, 240, 255, 0.14);
+      border-color: rgba(0, 240, 255, 0.4);
+      color: #00f0ff;
+    }
+
+    .btn-share-snapshot:hover {
+      background: rgba(16, 185, 129, 0.16);
+      border-color: rgba(16, 185, 129, 0.45);
+      color: #6ee7b7;
+    }
+
+    .panel-share-toast {
+      margin-top: 8px;
+      padding: 6px 12px;
+      background: rgba(0, 240, 255, 0.15);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      border-radius: 6px;
+      color: #00f0ff;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-align: center;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     @media (max-width: 768px) {
       .detail-card {
         position: fixed;
@@ -618,7 +692,7 @@ export class DetailPanelComponent {
   reportStatus = signal<'idle' | 'submitting' | 'success' | 'error'>('idle');
   reportMessage = signal<string>('');
 
-  getShakeMapData(event: any): ShakeMapResult {
+  getShakeMapData(event: EarthquakeDetail): ShakeMapResult {
     return this.shakeMapService.generateShakeMap(
       event.longitude,
       event.latitude,
@@ -640,7 +714,7 @@ export class DetailPanelComponent {
     this.reportMessage.set('');
   }
 
-  submitReport(event: any, intensity: number, emoji: string) {
+  submitReport(event: EarthquakeDetail, intensity: number, emoji: string) {
     this.reportStatus.set('submitting');
 
     if (navigator.geolocation) {
@@ -670,7 +744,7 @@ export class DetailPanelComponent {
       clientFingerprint: navigator.userAgent
     };
 
-    this.http.post<any>(`${environment.apiUrl}/earthquakes/${eventId}/reports`, payload).subscribe({
+    this.http.post<{ distanceToEpicenterMeters?: number }>(`${environment.apiUrl}/earthquakes/${eventId}/reports`, payload).subscribe({
       next: (res) => {
         const km = res.distanceToEpicenterMeters ? Math.round(res.distanceToEpicenterMeters / 1000) : 0;
         this.reportStatus.set('success');
@@ -688,6 +762,65 @@ export class DetailPanelComponent {
         this.reportMessage.set(errorText);
       }
     });
+  }
+
+  snapshotService = inject(SnapshotShareService);
+  shareToast = signal<string | null>(null);
+  private toastTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  async shareEventLink(event: EarthquakeDetail) {
+    const map = this.snapshotService.getActiveMap();
+    const zoom = map ? map.getZoom() : 6.5;
+    const url = this.snapshotService.buildShareUrl({
+      eventId: event.id,
+      lat: event.latitude,
+      lon: event.longitude,
+      zoom
+    });
+
+    const success = await this.snapshotService.copyLinkToClipboard(url);
+    if (success) {
+      this.showToast(this.transService.currentLang() === 'en' ? 'Link copied to clipboard!' : '¡Enlace copiado al portapapeles!');
+    }
+  }
+
+  async shareEventSnapshot(event: EarthquakeDetail) {
+    const map = this.snapshotService.getActiveMap();
+    if (!map) {
+      this.shareEventLink(event);
+      return;
+    }
+
+    const url = this.snapshotService.buildShareUrl({
+      eventId: event.id,
+      lat: event.latitude,
+      lon: event.longitude,
+      zoom: map.getZoom()
+    });
+
+    try {
+      const blob = await this.snapshotService.generateSnapshot(map, event);
+      const title = `Sismo M ${event.magnitude} - ${event.place || 'Centroamérica'}`;
+      const text = `Sismo de M ${event.magnitude} en ${event.place || 'Centroamérica'}. Profundidad ${(event.depth || 0).toFixed(1)} km. Monitoreo por Fozna Solutions.`;
+
+      const result = await this.snapshotService.shareSnapshotOrUrl(blob, title, text, url);
+      if (result === 'copied') {
+        this.showToast(this.transService.currentLang() === 'en' ? 'Link copied to clipboard!' : '¡Enlace copiado al portapapeles!');
+      } else if (result === 'downloaded') {
+        this.showToast(this.transService.currentLang() === 'en' ? 'ShakeMap downloaded & link copied!' : '¡Tarjeta ShakeMap descargada y enlace copiado!');
+      } else {
+        this.showToast(this.transService.currentLang() === 'en' ? 'Shared successfully!' : '¡Compartido con éxito!');
+      }
+    } catch (e) {
+      console.error('Error generating snapshot:', e);
+      this.shareEventLink(event);
+    }
+  }
+
+  private showToast(msg: string) {
+    this.shareToast.set(msg);
+    if (this.toastTimeout) clearTimeout(this.toastTimeout);
+    this.toastTimeout = setTimeout(() => this.shareToast.set(null), 3500);
   }
 }
 

@@ -4,6 +4,93 @@ import { HttpClient } from '@angular/common/http';
 import { TranslationService } from '../../services/translation.service';
 import { environment } from '../../../environments/environment';
 
+export interface AnalyticsTop10Event {
+  eventId: string;
+  title?: string;
+  place?: string;
+  magnitude: number;
+  magnitudeType?: string;
+  depthKm: number;
+  latitude: number;
+  longitude: number;
+  eventTime: string;
+  usgsUrl?: string;
+}
+
+export interface AnalyticsYearlyItem {
+  year: number;
+  count: number;
+}
+
+export interface RegionalSummaryResponse {
+  totalCount?: number;
+  totalEventsAnalyzed?: number;
+  maxMagnitude?: number;
+  avgDepth?: number;
+  dataSource?: string;
+  fromYear?: number;
+  toYear?: number;
+  windowStart?: string;
+  windowEnd?: string;
+  queryLatencyMs?: number;
+  countryDistribution?: Record<string, number>;
+  magnitudeDistribution?: {
+    menor?: number;
+    moderado?: number;
+    fuerte?: number;
+    mayor?: number;
+  };
+  depthDistribution?: {
+    shallowUnder30Km?: number;
+    intermediate30to70Km?: number;
+    deepOver70Km?: number;
+  };
+  eventsPerDay?: number;
+}
+
+export interface ForecastWindowData {
+  expectedCountM4?: number;
+  expectedCountM5?: number;
+  probabilityM5Plus?: string;
+  probabilityM6Plus?: string;
+}
+
+export interface AftershockForecastResponse {
+  status?: string;
+  mainshockTitle?: string;
+  mainshockMagnitude?: number;
+  mainshockPlace?: string;
+  mainshockTime?: string;
+  forecastWindow24h?: ForecastWindowData;
+  forecastWindow48h?: ForecastWindowData;
+  forecastWindow72h?: ForecastWindowData;
+}
+
+export interface AnomalyRatioItem {
+  iso2: string;
+  country: string;
+  count30d: number;
+  historicalMean30d: number;
+  ratio: number;
+  alertLevel: string;
+}
+
+export interface HistoricalInsightsResponse {
+  completenessMagnitude?: number;
+  completenessMc?: number;
+  completenessNote?: string;
+  bValue?: number;
+  bValueStdErr?: number;
+  aValue?: number;
+  fromYear?: number;
+  toYear?: number;
+  queryLatencyMs?: number;
+  top10?: AnalyticsTop10Event[];
+  yearlySeries?: AnalyticsYearlyItem[];
+  anomalyRatios?: AnomalyRatioItem[];
+  countryAnomaly?: AnomalyRatioItem[];
+}
+
 @Component({
   selector: 'app-analytics-modal',
   standalone: true,
@@ -20,7 +107,7 @@ import { environment } from '../../../environments/environment';
               <span class="sub-badge">
                 {{ getBadgeText() }}
                 @if (summary()?.queryLatencyMs !== undefined && summary()?.queryLatencyMs !== null) {
-                  <span class="latency-badge">({{ summary().queryLatencyMs }} ms)</span>
+                  <span class="latency-badge">({{ summary()?.queryLatencyMs }} ms)</span>
                 }
               </span>
             </div>
@@ -65,6 +152,31 @@ import { environment } from '../../../environments/environment';
             (click)="setTimeframe('custom')">
             📅 {{ transService.currentLang() === 'en' ? 'Year Range' : 'Rango' }}
           </button>
+        </div>
+
+        <!-- Barra de Filtro por País y Exportación de Datos Abiertos -->
+        <div class="analytics-sub-toolbar">
+          <div class="country-filter-box">
+            <span class="sub-toolbar-lbl">{{ transService.currentLang() === 'en' ? 'Country Filter:' : 'Filtro por País:' }}</span>
+            <select class="country-filter-select" id="analytics-country-select" [value]="selectedCountry()" (change)="onCountryChange($event)">
+              <option value="ALL">{{ transService.currentLang() === 'en' ? '🌎 Central America (All)' : '🌎 Toda Centroamérica' }}</option>
+              <option value="GT">🇬🇹 Guatemala (GT)</option>
+              <option value="SV">🇸🇻 El Salvador (SV)</option>
+              <option value="HN">🇭🇳 Honduras (HN)</option>
+              <option value="NI">🇳🇮 Nicaragua (NI)</option>
+              <option value="CR">🇨🇷 Costa Rica (CR)</option>
+              <option value="PA">🇵🇦 Panamá (PA)</option>
+            </select>
+          </div>
+
+          <div class="export-buttons-group">
+            <button class="btn-data-export" id="analytics-export-csv" (click)="exportToCsv()" [title]="transService.currentLang() === 'en' ? 'Export current dataset to CSV' : 'Exportar catálogo actual a CSV'">
+              <span>📥 CSV</span>
+            </button>
+            <button class="btn-data-export" id="analytics-export-geojson" (click)="exportToGeoJson()" [title]="transService.currentLang() === 'en' ? 'Export geospatial features to GeoJSON' : 'Exportar capa geoespacial a GeoJSON'">
+              <span>🗺️ GeoJSON</span>
+            </button>
+          </div>
         </div>
 
         @if (activeTimeframe() === 'custom') {
@@ -729,6 +841,71 @@ import { environment } from '../../../environments/environment';
       box-shadow: 0 0 15px rgba(0, 240, 255, 0.22);
     }
 
+    .analytics-sub-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      flex-wrap: wrap;
+    }
+
+    .country-filter-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sub-toolbar-lbl {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+
+    .country-filter-select {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 6px;
+      color: #ffffff;
+      font-family: var(--font-sans);
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 4px 8px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .export-buttons-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-data-export {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 6px;
+      color: #00f0ff;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-data-export:hover {
+      background: rgba(0, 240, 255, 0.22);
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+    }
+
     .custom-range-bar {
       display: flex;
       align-items: center;
@@ -1142,17 +1319,87 @@ export class AnalyticsModalComponent implements OnInit {
   readonly toYear = signal<number>(new Date().getFullYear());
   readonly currentYear = new Date().getFullYear();
   readonly availableYears = Array.from({ length: new Date().getFullYear() - 1980 + 1 }, (_, i) => 1980 + i);
+  readonly selectedCountry = signal<string>('ALL');
 
   readonly loading = signal<boolean>(true);
   readonly errorMessage = signal<string | null>(null);
-  readonly summary = signal<any>(null);
-  readonly forecast = signal<any>(null);
-  readonly insights = signal<any>(null);
+  readonly summary = signal<RegionalSummaryResponse | null>(null);
+  readonly forecast = signal<AftershockForecastResponse | null>(null);
+  readonly insights = signal<HistoricalInsightsResponse | null>(null);
 
   ngOnInit() {
     this.loadData(this.activeTimeframe());
     this.loadForecast();
     this.loadInsights(this.activeTimeframe());
+  }
+
+  onCountryChange(event: Event) {
+    const val = (event.target as HTMLSelectElement).value;
+    this.selectedCountry.set(val);
+    this.loadData(this.activeTimeframe());
+    if (this.activeTimeframe() !== '30d') {
+      this.loadInsights(this.activeTimeframe());
+    }
+  }
+
+  exportToCsv() {
+    const ins = this.insights();
+    const top10 = ins?.top10 || [];
+    const country = this.selectedCountry();
+    const tf = this.activeTimeframe();
+
+    let csv = 'rank,event_id,magnitude,magnitude_type,depth_km,latitude,longitude,place,event_time_utc,usgs_url\n';
+    top10.forEach((ev: AnalyticsTop10Event, idx: number) => {
+      csv += `${idx + 1},"${ev.eventId}",${ev.magnitude},"${ev.magnitudeType || ''}",${ev.depthKm},${ev.latitude},${ev.longitude},"${(ev.place || '').replace(/"/g, '""')}","${ev.eventTime}","${ev.usgsUrl}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const filename = `sismos-top10-${tf}-${country}.csv`;
+    this.downloadFile(blob, filename);
+  }
+
+  exportToGeoJson() {
+    const ins = this.insights();
+    const top10 = ins?.top10 || [];
+    const country = this.selectedCountry();
+    const tf = this.activeTimeframe();
+
+    const geojson = {
+      type: 'FeatureCollection',
+      features: top10.map((ev: AnalyticsTop10Event, idx: number) => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [ev.longitude, ev.latitude]
+        },
+        properties: {
+          rank: idx + 1,
+          id: ev.eventId,
+          title: ev.title,
+          magnitude: ev.magnitude,
+          magnitudeType: ev.magnitudeType,
+          depthKm: ev.depthKm,
+          place: ev.place,
+          time: ev.eventTime,
+          url: ev.usgsUrl
+        }
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/geo+json;charset=utf-8;' });
+    const filename = `sismos-top10-${tf}-${country}.geojson`;
+    this.downloadFile(blob, filename);
+  }
+
+  private downloadFile(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   setTimeframe(tf: '30d' | '5y' | '10y' | '40y' | 'custom') {
@@ -1211,8 +1458,11 @@ export class AnalyticsModalComponent implements OnInit {
     if (tf === 'custom') {
       url = `${environment.apiUrl}/analytics/regional-summary?fromYear=${this.fromYear()}&toYear=${this.toYear()}`;
     }
+    if (this.selectedCountry() !== 'ALL') {
+      url += `&country=${this.selectedCountry()}`;
+    }
 
-    this.http.get<any>(url).subscribe({
+    this.http.get<RegionalSummaryResponse>(url).subscribe({
       next: (data) => {
         this.summary.set(data);
         this.loading.set(false);
@@ -1239,7 +1489,10 @@ export class AnalyticsModalComponent implements OnInit {
     if (tf === 'custom') {
       url = `${environment.apiUrl}/analytics/historical-insights?fromYear=${this.fromYear()}&toYear=${this.toYear()}`;
     }
-    this.http.get<any>(url).subscribe({
+    if (this.selectedCountry() !== 'ALL') {
+      url += `&country=${this.selectedCountry()}`;
+    }
+    this.http.get<HistoricalInsightsResponse>(url).subscribe({
       next: (data) => this.insights.set(data),
       error: () => {
         this.insights.set(null);
@@ -1279,7 +1532,7 @@ export class AnalyticsModalComponent implements OnInit {
   }
 
   private loadForecast() {
-    this.http.get<any>(`${environment.apiUrl}/analytics/aftershock-forecast`).subscribe({
+    this.http.get<AftershockForecastResponse>(`${environment.apiUrl}/analytics/aftershock-forecast`).subscribe({
       next: (data) => {
         if (data.status !== 'NO_ACTIVE_MAJOR_EVENT') {
           this.forecast.set(data);
@@ -1292,7 +1545,7 @@ export class AnalyticsModalComponent implements OnInit {
   }
 
   getCountryList(): { name: string; count: number; percentage: number }[] {
-    const dist = this.summary()?.countryDistribution;
+    const dist = this.summary()?.countryDistribution as Record<string, number> | undefined;
     if (!dist) return [];
 
     const isEn = this.transService.currentLang() === 'en';
@@ -1321,13 +1574,13 @@ export class AnalyticsModalComponent implements OnInit {
   getYearlyBars(): { x: number; y: number; width: number; height: number; year: number; count: number }[] {
     const series = this.insights()?.yearlySeries;
     if (!series || !series.length) return [];
-    const maxCount = Math.max(1, ...series.map((s: any) => Number(s.count) || 0));
+    const maxCount = Math.max(1, ...series.map((s: AnalyticsYearlyItem) => Number(s.count) || 0));
     const total = series.length;
     const chartW = 530;
     const chartH = 80;
     const barW = Math.max(3, Math.floor(chartW / total) - 2);
 
-    return series.map((s: any, i: number) => {
+    return series.map((s: AnalyticsYearlyItem, i: number) => {
       const cnt = Number(s.count) || 0;
       const h = Math.max(2, Math.round((cnt / maxCount) * chartH));
       const x = 5 + i * (chartW / total);
@@ -1348,7 +1601,7 @@ export class AnalyticsModalComponent implements OnInit {
 
     const labels: { x: number; text: string; anchor: 'start' | 'middle' | 'end'; isCurrent: boolean }[] = [];
 
-    series.forEach((s: any, i: number) => {
+    series.forEach((s: AnalyticsYearlyItem, i: number) => {
       const year = Number(s.year);
       const isStart = year === startYear;
       const isEnd = year === endYear;

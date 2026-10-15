@@ -18,6 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -38,6 +41,29 @@ public class CitizenReportService {
 
     @Value("${sismos.reports.time-window-hours:72}")
     private int timeWindowHours;
+
+    // Cache con desalojo automático por tiempo y capacidad máxima acotada para evitar fugas de memoria
+    private final Cache<String, List<Long>> rateLimitCache = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofHours(1))
+            .maximumSize(50_000)
+            .build();
+
+    private void enforceRateLimit(String fingerprint) {
+        long now = System.currentTimeMillis();
+        long windowStart = now - (60L * 60L * 1000L); // 1 hora
+        rateLimitCache.asMap().compute(fingerprint, (k, timestamps) -> {
+            if (timestamps == null) {
+                timestamps = new ArrayList<>();
+            }
+            timestamps.removeIf(ts -> ts < windowStart);
+            if (timestamps.size() >= 5) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "Has alcanzado el límite máximo de reportes permitidos por hora (máximo 5). Por favor intenta más tarde.");
+            }
+            timestamps.add(now);
+            return timestamps;
+        });
+    }
 
     /**
      * Calcula el radio máximo físicamente admisible de percepción humana en metros
@@ -65,6 +91,8 @@ public class CitizenReportService {
         String fingerprint = (request.getClientFingerprint() != null && !request.getClientFingerprint().isBlank())
                 ? request.getClientFingerprint().trim()
                 : (clientIp != null ? clientIp.trim() : "anonymous-client");
+
+        enforceRateLimit(fingerprint);
 
         if (citizenReportRepository.existsByEventIdAndClientFingerprint(eventId, fingerprint)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,

@@ -6,6 +6,7 @@ import { TimelineComponent } from '../timeline/timeline.component';
 import { DetailPanelComponent } from '../detail-panel/detail-panel.component';
 import { FiltersComponent } from '../filters/filters.component';
 import { AnalyticsModalComponent } from '../analytics/analytics-modal.component';
+import { CabrakanChatComponent } from '../cabrakan-chat/cabrakan-chat.component';
 import { WebSocketService } from '../../services/websocket.service';
 import { EarthquakeService } from '../../services/earthquake.service';
 
@@ -19,7 +20,8 @@ import { EarthquakeService } from '../../services/earthquake.service';
     TimelineComponent,
     DetailPanelComponent,
     FiltersComponent,
-    AnalyticsModalComponent
+    AnalyticsModalComponent,
+    CabrakanChatComponent
   ],
   template: `
     <div class="monitor-container">
@@ -30,6 +32,7 @@ import { EarthquakeService } from '../../services/earthquake.service';
       <app-map />
       <app-timeline />
       <app-detail-panel />
+      <app-cabrakan-chat />
 
       @if (isFilterOpen()) {
         <app-filters (close)="isFilterOpen.set(false)" />
