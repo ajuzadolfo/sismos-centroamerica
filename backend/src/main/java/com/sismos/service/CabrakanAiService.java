@@ -13,8 +13,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -254,5 +261,165 @@ public class CabrakanAiService {
                 "Muéstrame la actividad en la Fosa de Subducción",
                 "¿Qué precauciones tomar ante una secuencia de réplicas?"
         );
+    }
+
+    public void streamChat(CabrakanChatRequest request, ResponseBodyEmitter emitter) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                String userMessage = request.getMessage() != null ? request.getMessage().trim() : "";
+                String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-flash-latest";
+
+                if (userMessage.isEmpty()) {
+                    sendChunk(emitter, "Hola, soy **Cabrakán AI**, tu asistente geocientífico para Centroamérica. ¿En qué puedo orientarte hoy sobre la actividad sísmica y tectónica de la región?", modelName);
+                    sendComplete(emitter, null, List.of("¿Cuáles son los sismos más fuertes registrados?", "¿Cómo interactúan las placas de Cocos y el Caribe?"));
+                    emitter.complete();
+                    return;
+                }
+
+                Map<String, Object> mapAction = detectMapAction(userMessage);
+
+                if (geminiApiKey != null && !geminiApiKey.isBlank()) {
+                    try {
+                        callGeminiStreamChat(request, mapAction, emitter);
+                        emitter.complete();
+                        return;
+                    } catch (Exception e) {
+                        log.warn("Fallo en inferencia streaming con Gemini, usando respuesta inteligente de respaldo: {}", e.getMessage());
+                    }
+                }
+
+                streamExpertFallback(userMessage, mapAction, emitter);
+                emitter.complete();
+            } catch (Exception e) {
+                log.error("Error en streaming de Cabrakán AI: {}", e.getMessage(), e);
+                try {
+                    emitter.completeWithError(e);
+                } catch (Exception ignored) {}
+            }
+        });
+    }
+
+    private void callGeminiStreamChat(CabrakanChatRequest request, Map<String, Object> mapAction, ResponseBodyEmitter emitter) throws Exception {
+        String systemInstruction = """
+            Eres «Cabrakán AI», un Asistente Geocientífico sismológico y de protección civil de alta precisión para la plataforma Sismos Centroamérica (desarrollada por Fozna Solutions).
+            Tu nombre proviene del Popol Vuh maya: Cabrakán (el dios que sacude los montes y hace temblar la tierra).
+            Tu personalidad es serena, empática, rigurosamente científica y accesible para la ciudadanía.
+            Dominas la tectónica de placas de Centroamérica: subducción de la Placa de Cocos bajo la Placa del Caribe en la Fosa Mesoamericana, la Zona de Falla de Motagua-Polochic, la Zona de Fractura de Panamá y el Arco Volcánico Centroamericano.
+            Responde con formato Markdown claro y profesional, usando listas con viñetas cuando sea didáctico.
+            Si el usuario pregunta por prevención, menciona pautas alineadas a las instituciones de la región (CONRED Guatemala, MARN/Protección Civil El Salvador, COPECO Honduras, SINAPRED Nicaragua, CNE Costa Rica, SINAPROC Panamá).
+            """;
+
+        String userPrompt = "Pregunta del usuario: " + request.getMessage();
+        List<SeismicEvent> recent = seismicEventRepository.findTop50ByOrderByTimeDesc();
+        if (!recent.isEmpty()) {
+            SeismicEvent latest = recent.get(0);
+            double mag = latest.getMagnitude() != null ? latest.getMagnitude().doubleValue() : 0.0;
+            String place = latest.getPlace() != null ? latest.getPlace() : "Centroamérica";
+            double depth = latest.getDepth() != null ? latest.getDepth().doubleValue() : 0.0;
+            String time = latest.getTime() != null ? latest.getTime().toString() : "Reciente";
+            userPrompt += String.format(Locale.US, "\n[Contexto en Vivo: Último sismo M %.1f en %s, prof: %.1f km, fecha: %s]",
+                    mag, place, depth, time);
+        }
+
+        String cleanApiKey = geminiApiKey != null ? geminiApiKey.trim() : "";
+        String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-flash-latest";
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":streamGenerateContent?alt=sse&key=" + cleanApiKey;
+
+        Map<String, Object> body = Map.of(
+                "systemInstruction", Map.of("parts", List.of(Map.of("text", systemInstruction))),
+                "contents", List.of(
+                        Map.of("role", "user", "parts", List.of(Map.of("text", userPrompt)))
+                ),
+                "generationConfig", Map.of(
+                        "temperature", 0.4,
+                        "maxOutputTokens", 2048
+                )
+        );
+
+        String jsonPayload = objectMapper.writeValueAsString(body);
+
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .header("x-goog-api-key", cleanApiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                .build();
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpResponse<java.util.stream.Stream<String>> httpResponse = client.send(httpRequest, HttpResponse.BodyHandlers.ofLines());
+
+        if (httpResponse.statusCode() >= 400) {
+            throw new RuntimeException("Error HTTP desde Gemini Stream API: " + httpResponse.statusCode());
+        }
+
+        try (java.util.stream.Stream<String> lines = httpResponse.body()) {
+            lines.forEach(line -> {
+                if (line.startsWith("data: ")) {
+                    String jsonPart = line.substring(6).trim();
+                    if (!jsonPart.isEmpty() && !"[DONE]".equals(jsonPart)) {
+                        try {
+                            JsonNode root = objectMapper.readTree(jsonPart);
+                            JsonNode candidates = root.path("candidates");
+                            if (candidates.isArray() && !candidates.isEmpty()) {
+                                JsonNode parts = candidates.get(0).path("content").path("parts");
+                                if (parts.isArray() && !parts.isEmpty()) {
+                                    String text = parts.get(0).path("text").asText("");
+                                    if (!text.isEmpty()) {
+                                        sendChunk(emitter, text, modelName);
+                                    }
+                                }
+                            }
+                        } catch (Exception ex) {
+                            log.debug("Chunk stream ignorado: {}", ex.getMessage());
+                        }
+                    }
+                }
+            });
+        }
+
+        sendComplete(emitter, mapAction, generateSuggestions(request.getMessage()));
+    }
+
+    private void streamExpertFallback(String message, Map<String, Object> mapAction, ResponseBodyEmitter emitter) {
+        CabrakanChatResponse fallback = generateExpertFallback(message, mapAction);
+        String reply = fallback.getReply();
+        String[] words = reply.split(" ");
+        StringBuilder current = new StringBuilder();
+        for (int i = 0; i < words.length; i++) {
+            current.append(words[i]).append(" ");
+            if ((i + 1) % 4 == 0 || i == words.length - 1) {
+                sendChunk(emitter, current.toString(), "offline-fallback");
+                current.setLength(0);
+                try {
+                    Thread.sleep(25);
+                } catch (InterruptedException ignored) {}
+            }
+        }
+        sendComplete(emitter, mapAction, fallback.getSuggestedQuestions());
+    }
+
+    private void sendChunk(ResponseBodyEmitter emitter, String text, String modelUsed) {
+        try {
+            Map<String, Object> chunk = Map.of(
+                    "type", "chunk",
+                    "text", text,
+                    "modelUsed", modelUsed
+            );
+            emitter.send(objectMapper.writeValueAsString(chunk) + "\n");
+        } catch (Exception e) {
+            log.trace("Error enviando chunk: {}", e.getMessage());
+        }
+    }
+
+    private void sendComplete(ResponseBodyEmitter emitter, Map<String, Object> mapAction, List<String> suggestions) {
+        try {
+            Map<String, Object> complete = new HashMap<>();
+            complete.put("type", "complete");
+            if (mapAction != null) complete.put("mapAction", mapAction);
+            if (suggestions != null) complete.put("suggestedQuestions", suggestions);
+            emitter.send(objectMapper.writeValueAsString(complete) + "\n");
+        } catch (Exception e) {
+            log.trace("Error enviando complete: {}", e.getMessage());
+        }
     }
 }

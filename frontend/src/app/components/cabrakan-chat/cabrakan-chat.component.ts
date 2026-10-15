@@ -613,7 +613,7 @@ export class CabrakanChatComponent {
     this.sendMessage();
   }
 
-  sendMessage() {
+  async sendMessage() {
     const text = this.userInput.trim();
     if (!text || this.isGenerating()) return;
 
@@ -639,48 +639,104 @@ export class CabrakanChatComponent {
       history
     };
 
-    this.http.post<CabrakanChatResponseDto>(`${environment.apiUrl}/chat/cabrakan`, payload).subscribe({
-      next: (res) => {
-        const model = res.modelUsed || 'offline-fallback';
-        this.activeModel.set(model);
-        const assistantMsg: ChatMessage = {
-          id: 'asst-' + Date.now(),
-          role: 'assistant',
-          content: res.reply || 'He recibido tu consulta pero no pude generar detalles.',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          modelUsed: model,
-          mapAction: res.mapAction || null
-        };
+    const asstId = 'asst-' + Date.now();
+    const asstMsg: ChatMessage = {
+      id: asstId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      modelUsed: this.activeModel(),
+      mapAction: null
+    };
 
-        this.messages.update(list => [...list, assistantMsg]);
-        if (res.suggestedQuestions && res.suggestedQuestions.length > 0) {
-          this.suggestions.set(res.suggestedQuestions);
-        }
-        this.isGenerating.set(false);
-        this.scrollToBottom();
+    let hasStarted = false;
 
-        // Si la ventana no estaba abierta, marcar no leído
-        if (!this.isOpen()) {
-          this.hasUnread.set(true);
-        }
+    try {
+      const response = await fetch(`${environment.apiUrl}/chat/cabrakan/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify(payload)
+      });
 
-        // Si viene acción de mapa y la cámara está disponible, ejecutarla automáticamente
-        if (res.mapAction) {
-          this.flyToMapAction(res.mapAction);
+      if (!response.ok || !response.body) {
+        throw new Error('Streaming failed: ' + response.status);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
+          try {
+            const data = JSON.parse(trimmed);
+            if (data.type === 'chunk') {
+              if (!hasStarted) {
+                hasStarted = true;
+                this.isGenerating.set(false);
+                this.messages.update(list => [...list, asstMsg]);
+              }
+              if (data.modelUsed) {
+                this.activeModel.set(data.modelUsed);
+                asstMsg.modelUsed = data.modelUsed;
+              }
+              asstMsg.content += data.text || '';
+              this.messages.update(list =>
+                list.map(m => m.id === asstId ? { ...m, content: asstMsg.content, modelUsed: asstMsg.modelUsed } : m)
+              );
+              this.scrollToBottom();
+            } else if (data.type === 'complete') {
+              if (data.suggestedQuestions && data.suggestedQuestions.length > 0) {
+                this.suggestions.set(data.suggestedQuestions);
+              }
+              if (data.mapAction) {
+                asstMsg.mapAction = data.mapAction;
+                this.messages.update(list =>
+                  list.map(m => m.id === asstId ? { ...m, mapAction: data.mapAction } : m)
+                );
+                this.flyToMapAction(data.mapAction);
+              }
+            }
+          } catch {
+            // Chunk intermedio no JSON ignorado
+          }
         }
-      },
-      error: (_err) => {
+      }
+
+      if (!hasStarted && asstMsg.content) {
+        this.messages.update(list => [...list, asstMsg]);
+      }
+    } catch {
+      if (!hasStarted) {
         const fallbackMsg: ChatMessage = {
           id: 'asst-err-' + Date.now(),
           role: 'assistant',
           content: 'No pude conectar con el servicio de inferencia en este momento. Por favor reintenta en breve.',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          modelUsed: 'offline-fallback'
         };
         this.messages.update(list => [...list, fallbackMsg]);
-        this.isGenerating.set(false);
-        this.scrollToBottom();
       }
-    });
+    } finally {
+      this.isGenerating.set(false);
+      this.scrollToBottom();
+      if (!this.isOpen()) {
+        this.hasUnread.set(true);
+      }
+    }
   }
 
   flyToMapAction(action: CabrakanMapAction) {
