@@ -140,7 +140,7 @@ public class CabrakanAiService {
         }
 
         String cleanApiKey = geminiApiKey != null ? geminiApiKey.trim() : "";
-        String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-3.8-flash";
+        String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-flash-latest";
         String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + cleanApiKey;
 
         Map<String, Object> body = Map.of(
@@ -150,7 +150,7 @@ public class CabrakanAiService {
                 ),
                 "generationConfig", Map.of(
                         "temperature", 0.4,
-                        "maxOutputTokens", 1000
+                        "maxOutputTokens", 2048
                 )
         );
 

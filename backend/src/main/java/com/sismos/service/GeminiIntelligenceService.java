@@ -103,7 +103,7 @@ public class GeminiIntelligenceService {
     private SeismicIntelligenceReportDto callGeminiApi(SeismicEvent event) {
         String prompt = buildPrompt(event);
         String cleanApiKey = geminiApiKey != null ? geminiApiKey.trim() : "";
-        String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-3.8-flash";
+        String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-flash-latest";
         String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + cleanApiKey;
 
         Map<String, Object> requestBody = Map.of(
@@ -112,7 +112,7 @@ public class GeminiIntelligenceService {
                 ),
                 "generationConfig", Map.of(
                         "temperature", 0.2,
-                        "maxOutputTokens", 800
+                        "maxOutputTokens", 2048
                 )
         );
 
