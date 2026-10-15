@@ -32,7 +32,7 @@ public class GeminiIntelligenceService {
     @Value("${gemini.api.key:#{null}}")
     private String geminiApiKey;
 
-    @Value("${gemini.api.model:gemini-3.8-flash}")
+    @Value("${gemini.api.model:gemini-flash-latest}")
     private String geminiModel;
 
     // Caché en memoria para evitar invocar el modelo varias veces para el mismo evento

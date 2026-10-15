@@ -30,7 +30,7 @@ public class CabrakanAiService {
     @Value("${gemini.api.key:#{null}}")
     private String geminiApiKey;
 
-    @Value("${gemini.api.model:gemini-3.8-flash}")
+    @Value("${gemini.api.model:gemini-flash-latest}")
     private String geminiModel;
 
     public CabrakanChatResponse chat(CabrakanChatRequest request) {
