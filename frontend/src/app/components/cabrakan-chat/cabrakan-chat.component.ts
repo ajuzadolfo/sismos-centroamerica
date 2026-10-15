@@ -17,6 +17,8 @@ export interface CabrakanMapAction {
 
 export interface CabrakanChatResponseDto {
   reply: string;
+  modelUsed?: string;
+  timestamp?: string;
   suggestedQuestions?: string[];
   mapAction?: CabrakanMapAction | null;
 }
@@ -26,6 +28,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  modelUsed?: string;
   mapAction?: CabrakanMapAction | null;
 }
 
@@ -58,7 +61,16 @@ export interface ChatMessage {
             <div>
               <div class="header-title-row">
                 <span class="assistant-name">Cabrakán AI</span>
-                <span class="assistant-chip">Gemini 2.5 Flash</span>
+                @if (activeModel() === 'gemini-2.5-flash') {
+                  <span class="assistant-chip live" title="Conectado en vivo con Gemini 2.5 Flash">
+                    <span class="status-pulse-dot"></span>
+                    Gemini 2.5 Flash (En Vivo)
+                  </span>
+                } @else {
+                  <span class="assistant-chip fallback" title="Operando en Modo Respaldo Geocientífico Offline">
+                    🛡️ Modo Respaldo (Offline)
+                  </span>
+                }
               </div>
               <span class="assistant-subtitle">
                 {{ transService.currentLang() === 'en' ? 'Geoscientific AI · Central America' : 'Asistente Geocientífico · Centroamérica' }}
@@ -86,7 +98,14 @@ export interface ChatMessage {
                   </button>
                 }
 
-                <span class="msg-time">{{ msg.timestamp }}</span>
+                <div class="msg-meta-row">
+                  @if (msg.role === 'assistant' && msg.modelUsed) {
+                    <span class="msg-model-tag" [class.live]="msg.modelUsed === 'gemini-2.5-flash'" [class.fallback]="msg.modelUsed !== 'gemini-2.5-flash'">
+                      {{ msg.modelUsed === 'gemini-2.5-flash' ? '⚡ Gemini 2.5 Flash' : '🛡️ Respaldo Geocientífico' }}
+                    </span>
+                  }
+                  <span class="msg-time">{{ msg.timestamp }}</span>
+                </div>
               </div>
             </div>
           }
@@ -258,12 +277,66 @@ export interface ChatMessage {
     }
 
     .assistant-chip {
-      font-size: 0.6rem;
+      font-size: 0.62rem;
       font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.3s ease;
+    }
+
+    .assistant-chip.live {
       color: #38bdf8;
       background: rgba(56, 189, 248, 0.14);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .assistant-chip.fallback {
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.12);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+    }
+
+    .status-pulse-dot {
+      width: 6px;
+      height: 6px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #10b981;
+      animation: status-blink 1.8s infinite ease-in-out;
+    }
+
+    @keyframes status-blink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .msg-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 6px;
+      font-size: 0.65rem;
+    }
+
+    .msg-model-tag {
+      font-size: 0.6rem;
+      font-weight: 600;
       padding: 1px 6px;
-      border-radius: 8px;
+      border-radius: 6px;
+    }
+
+    .msg-model-tag.live {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+    }
+
+    .msg-model-tag.fallback {
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.12);
     }
 
     .assistant-subtitle {
@@ -506,6 +579,7 @@ export class CabrakanChatComponent {
 
   @ViewChild('messageContainer') messageContainer?: ElementRef<HTMLDivElement>;
 
+  activeModel = signal<string>('gemini-2.5-flash');
   isOpen = signal<boolean>(false);
   hasUnread = signal<boolean>(false);
   isGenerating = signal<boolean>(false);
@@ -567,11 +641,14 @@ export class CabrakanChatComponent {
 
     this.http.post<CabrakanChatResponseDto>(`${environment.apiUrl}/chat/cabrakan`, payload).subscribe({
       next: (res) => {
+        const model = res.modelUsed || 'offline-fallback';
+        this.activeModel.set(model);
         const assistantMsg: ChatMessage = {
           id: 'asst-' + Date.now(),
           role: 'assistant',
           content: res.reply || 'He recibido tu consulta pero no pude generar detalles.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          modelUsed: model,
           mapAction: res.mapAction || null
         };
 

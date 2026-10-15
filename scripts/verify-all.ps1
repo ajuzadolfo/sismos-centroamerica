@@ -13,15 +13,19 @@ $additionalPaths = @(
     "C:\Program Files\Java\jdk-21\bin"
 )
 foreach ($p in $additionalPaths) {
-    if ((Test-Path $p) -and ($env:PATH -notlike "*$p*")) {
-        $env:PATH = "$p;$env:PATH"
-    }
+    try {
+        if ((Test-Path -Path $p -ErrorAction SilentlyContinue) -and ($env:PATH -notlike "*$p*")) {
+            $env:PATH = "$p;$env:PATH"
+        }
+    } catch {}
 }
 
 if (-not (Test-Path env:JAVA_HOME)) {
-    if (Test-Path "C:\Program Files\Java\jdk-21") {
-        $env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
-    }
+    try {
+        if (Test-Path "C:\Program Files\Java\jdk-21" -ErrorAction SilentlyContinue) {
+            $env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
+        }
+    } catch {}
 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot

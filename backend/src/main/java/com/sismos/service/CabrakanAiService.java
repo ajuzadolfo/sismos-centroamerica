@@ -227,7 +227,7 @@ public class CabrakanAiService {
 
         return CabrakanChatResponse.builder()
                 .reply(reply)
-                .modelUsed("gemini-2.5-flash-geosentry")
+                .modelUsed("offline-fallback")
                 .timestamp(Instant.now().toString())
                 .mapAction(mapAction)
                 .suggestedQuestions(generateSuggestions(message))
