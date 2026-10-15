@@ -759,6 +759,12 @@ export class CabrakanChatComponent {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
+    // Limpiar notación matemática de LaTeX y símbolos de dólar (ej: $M_w$, $M_s$, $b$-value)
+    formatted = formatted
+      .replace(/\$M_\{?([a-zA-Z0-9]+)\}?\$/gi, 'M<sub>$1</sub>')
+      .replace(/\$b\$-value/gi, 'valor b')
+      .replace(/\$(.*?)\$/g, '$1');
+
     // Formato básico de markdown
     formatted = formatted
       .replace(/### (.*?)(?:\n|$)/g, '<h4 style="color:#00f0ff;margin:6px 0 3px 0;font-size:0.82rem;">$1</h4>')

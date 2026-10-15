@@ -129,6 +129,7 @@ public class CabrakanAiService {
             Tu personalidad es serena, empática, rigurosamente científica y accesible para la ciudadanía.
             Dominas la tectónica de placas de Centroamérica: subducción de la Placa de Cocos bajo la Placa del Caribe en la Fosa Mesoamericana, la Zona de Falla de Motagua-Polochic, la Zona de Fractura de Panamá y el Arco Volcánico Centroamericano.
             Responde con formato Markdown claro y profesional, usando listas con viñetas cuando sea didáctico.
+            No uses notación LaTeX ni signos de dólar ($) para magnitudes o fórmulas (por ejemplo, escribe 'Mw 7.7', 'Ms 7.5' o 'Magnitud 7.7' en lugar de '$M_w 7.7$').
             Si el usuario pregunta por prevención, menciona pautas alineadas a las instituciones de la región (CONRED Guatemala, MARN/Protección Civil El Salvador, COPECO Honduras, SINAPRED Nicaragua, CNE Costa Rica, SINAPROC Panamá).
             """;
 
@@ -197,7 +198,7 @@ public class CabrakanAiService {
                 ### 🌋 Dinámica Geotectónica de Centroamérica
                 Centroamérica es una de las regiones con mayor convergencia geodinámica del planeta:
                 * **Subducción Principal:** La **Placa de Cocos** converge hacia el noreste a una velocidad de **70 a 90 mm/año**, hundiéndose por debajo de la **Placa del Caribe** en la Fosa Mesoamericana.
-                * **Sismicidad de Interplaca:** Los sismos de mayor magnitud ($M_w > 7.0$) se generan típicamente a lo largo de este plano de fricción a profundidades de 15 a 45 km.
+                * **Sismicidad de Interplaca:** Los sismos de mayor magnitud (Mw > 7.0) se generan típicamente a lo largo de este plano de fricción a profundidades de 15 a 45 km.
                 * **Sismicidad Intraplaca y Arco Volcánico:** La deshidratación de la placa subducida a más de 80 km de profundidad funde el manto, originando la cadena volcánica activa que recorre Guatemala, El Salvador, Nicaragua y Costa Rica.
                 """;
         } else if (lower.contains("recomiend") || lower.contains("hacer") || lower.contains("seguridad") || lower.contains("prevenc") || lower.contains("protocol")) {
@@ -217,11 +218,11 @@ public class CabrakanAiService {
             reply = """
                 ### 🏛️ Grandes Terremotos Históricos en Centroamérica
                 El catálogo sísmico regional documenta eventos de impacto tectónico continental:
-                * **1976 — Guatemala ($M_s 7.5$):** Ruptura superficial de más de 230 km en la Falla de Motagua.
-                * **1986 — San Salvador ($M_w 5.7$):** Sismo intraplaca a muy baja profundidad (5 km), de alto impacto en la capital salvadoreña.
-                * **1990 — Cobano / Nicoya, Costa Rica ($M_w 7.0$):** Interplaca en la zona de subducción del Golfo de Nicoya.
-                * **2001 — El Salvador ($M_w 7.7$ y $M_w 6.6$):** Doble terremoto en enero y febrero (subducción y falla local).
-                * **2021 — Golfo de Fonseca / Fosa ($M_w 6.7$):** Actividad continua de reajuste tectónico.
+                * **1976 — Guatemala (Ms 7.5):** Ruptura superficial de más de 230 km en la Falla de Motagua.
+                * **1986 — San Salvador (Mw 5.7):** Sismo intraplaca a muy baja profundidad (5 km), de alto impacto en la capital salvadoreña.
+                * **1990 — Cobano / Nicoya, Costa Rica (Mw 7.0):** Interplaca en la zona de subducción del Golfo de Nicoya.
+                * **2001 — El Salvador (Mw 7.7 y Mw 6.6):** Doble terremoto en enero y febrero (subducción y falla local).
+                * **2021 — Golfo de Fonseca / Fosa (Mw 6.7):** Actividad continua de reajuste tectónico.
                 """;
         } else {
             List<SeismicEvent> recent = seismicEventRepository.findTop50ByOrderByTimeDesc();
@@ -234,7 +235,7 @@ public class CabrakanAiService {
                 %s
 
                 En este momento la red de estaciones y el catálogo histórico de 40+ años se encuentran sincronizados.
-                ¿Deseas examinar la actividad sísmica de algún país en específico, analizar la tasa de sismicidad ($b$-value) o consultar medidas de seguridad?
+                ¿Deseas examinar la actividad sísmica de algún país en específico, analizar la tasa de sismicidad (valor b) o consultar medidas de seguridad?
                 """, latestInfo);
         }
 
@@ -306,6 +307,7 @@ public class CabrakanAiService {
             Tu personalidad es serena, empática, rigurosamente científica y accesible para la ciudadanía.
             Dominas la tectónica de placas de Centroamérica: subducción de la Placa de Cocos bajo la Placa del Caribe en la Fosa Mesoamericana, la Zona de Falla de Motagua-Polochic, la Zona de Fractura de Panamá y el Arco Volcánico Centroamericano.
             Responde con formato Markdown claro y profesional, usando listas con viñetas cuando sea didáctico.
+            No uses notación LaTeX ni signos de dólar ($) para magnitudes o fórmulas (por ejemplo, escribe 'Mw 7.7', 'Ms 7.5' o 'Magnitud 7.7' en lugar de '$M_w 7.7$').
             Si el usuario pregunta por prevención, menciona pautas alineadas a las instituciones de la región (CONRED Guatemala, MARN/Protección Civil El Salvador, COPECO Honduras, SINAPRED Nicaragua, CNE Costa Rica, SINAPROC Panamá).
             """;
 
