@@ -2,24 +2,47 @@ package com.sismos.controller;
 
 import com.sismos.service.BigQueryAnalyticsService;
 import com.sismos.service.PostGisAnalyticsService;
-import lombok.RequiredArgsConstructor;
+import com.sismos.model.dto.ClientErrorDto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/analytics")
-@RequiredArgsConstructor
 public class AnalyticsController {
+
+    private static final Logger log = LoggerFactory.getLogger(AnalyticsController.class);
 
     private final PostGisAnalyticsService postGisAnalyticsService;
     private final Optional<BigQueryAnalyticsService> bigQueryAnalyticsService;
+
+    public AnalyticsController(PostGisAnalyticsService postGisAnalyticsService,
+                               Optional<BigQueryAnalyticsService> bigQueryAnalyticsService) {
+        this.postGisAnalyticsService = postGisAnalyticsService;
+        this.bigQueryAnalyticsService = bigQueryAnalyticsService;
+    }
+
+    @PostMapping("/client-errors")
+    public ResponseEntity<Void> recordClientError(@RequestBody(required = false) ClientErrorDto clientError) {
+        if (clientError != null && clientError.message() != null) {
+            String shortStack = clientError.stack();
+            if (shortStack != null && shortStack.length() > 600) {
+                shortStack = shortStack.substring(0, 600) + "...";
+            }
+            log.warn("🚨 [FRONTEND CLIENT ERROR] Type: [{}], URL: [{}], Msg: [{}], Stack: [{}], UA: [{}]",
+                    clientError.errorType() != null ? clientError.errorType() : "UnknownError",
+                    clientError.url(),
+                    clientError.message(),
+                    shortStack,
+                    clientError.userAgent());
+        }
+        return ResponseEntity.ok().build();
+    }
 
     @GetMapping("/regional-summary")
     public ResponseEntity<Map<String, Object>> getRegionalSummary(
