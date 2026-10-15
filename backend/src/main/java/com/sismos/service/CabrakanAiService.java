@@ -102,7 +102,11 @@ public class CabrakanAiService {
 
         if (userMessage.isEmpty()) {
             return CabrakanChatResponse.builder()
-                    .reply("Hola, soy **Cabrakán AI**, tu asistente geocientífico para Centroamérica. ¿En qué puedo orientarte hoy sobre la actividad sísmica y tectónica de la región?")
+                    .reply("""
+                        ¡Saludos! Soy **Cabrakán AI**, tu asistente geocientífico especializado en Centroamérica.
+                        Estoy siendo activamente desarrollado por Fozna Solutions como proyecto piloto.
+                        Pregúntame sobre cualquier evento sísmico.
+                        """.stripIndent().trim())
                     .modelUsed((geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-3.8-flash")
                     .timestamp(Instant.now().toString())
                     .suggestedQuestions(List.of(
@@ -349,7 +353,7 @@ public class CabrakanAiService {
                 String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-flash-latest";
 
                 if (userMessage.isEmpty()) {
-                    sendChunk(emitter, "Hola, soy **Cabrakán AI**, tu asistente geocientífico para Centroamérica. ¿En qué puedo orientarte hoy sobre la actividad sísmica y tectónica de la región?", modelName);
+                    sendChunk(emitter, "¡Saludos! Soy **Cabrakán AI**, tu asistente geocientífico especializado en Centroamérica.\nEstoy siendo activamente desarrollado por Fozna Solutions como proyecto piloto.\nPregúntame sobre cualquier evento sísmico.", modelName);
                     sendComplete(emitter, null, List.of("¿Cuáles son los sismos más fuertes registrados?", "¿Cómo interactúan las placas de Cocos y el Caribe?"));
                     emitter.complete();
                     return;

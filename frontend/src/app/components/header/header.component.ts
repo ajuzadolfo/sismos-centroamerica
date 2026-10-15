@@ -1,26 +1,34 @@
-import { Component, EventEmitter, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Output, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { EarthquakeService } from '../../services/earthquake.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { TranslationService } from '../../services/translation.service';
 import { PushNotificationService } from '../../services/push-notification.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-header',
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <header class="header glass-panel">
+    <header class="header glass-panel" [class.is-test-header]="isTest()">
+      @if (isTest()) {
+        <div class="test-corner-ribbon" aria-hidden="true" [title]="transService.currentLang() === 'es' ? 'Entorno de Pruebas · No Producción' : 'Test Environment · Not Production'">
+          <span>TESTING</span>
+        </div>
+      }
       <a routerLink="/" class="logo-group" [title]="transService.tr().header.home">
         <div class="pulse-indicator" [class.connected]="wsService.isConnected()">
           <span class="dot"></span>
         </div>
         <div class="title-container">
-          <h1 class="brand-title">
-            <span class="brand-main">{{ transService.currentLang() === 'es' ? 'SISMOS' : 'EARTHQUAKES' }}</span>
-            <span class="brand-sub">{{ transService.currentLang() === 'es' ? 'CENTROAMÉRICA' : 'CENTRAL AMERICA' }}</span>
-          </h1>
+          <div class="brand-title-wrap">
+            <h1 class="brand-title">
+              <span class="brand-main">{{ transService.currentLang() === 'es' ? 'SISMOS' : 'EARTHQUAKES' }}</span>
+              <span class="brand-sub">{{ transService.currentLang() === 'es' ? 'CENTROAMÉRICA' : 'CENTRAL AMERICA' }}</span>
+            </h1>
+          </div>
           <span class="subtitle">{{ transService.tr().header.subtitle }}</span>
         </div>
       </a>
@@ -125,6 +133,50 @@ import { PushNotificationService } from '../../services/push-notification.servic
       z-index: 100;
       box-sizing: border-box;
       max-width: calc(100vw - 32px);
+      overflow: hidden;
+    }
+
+    .logo-group,
+    .metrics-group,
+    .actions-group {
+      position: relative;
+      z-index: 2;
+    }
+
+    .header.is-test-header {
+      padding-right: 48px;
+      border-top: 2px solid rgba(245, 158, 11, 0.7);
+    }
+
+    .test-corner-ribbon {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 75px;
+      height: 75px;
+      overflow: hidden;
+      pointer-events: none;
+      user-select: none;
+      z-index: 10;
+    }
+
+    .test-corner-ribbon span {
+      position: absolute;
+      display: block;
+      width: 110px;
+      padding: 3px 0;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      color: #0f172a;
+      font-size: 0.60rem;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      text-align: center;
+      right: -26px;
+      top: 16px;
+      transform: rotate(45deg);
+      user-select: none;
     }
 
     .logo-group {
@@ -166,6 +218,12 @@ import { PushNotificationService } from '../../services/push-notification.servic
     @keyframes pulse-glow {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.6; transform: scale(1.2); }
+    }
+
+    .brand-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .brand-title {
@@ -418,6 +476,27 @@ import { PushNotificationService } from '../../services/push-notification.servic
         height: 12px;
       }
 
+      .brand-title-wrap {
+        gap: 5px;
+      }
+
+      .header.is-test-header {
+        padding-right: 36px;
+      }
+
+      .test-corner-ribbon {
+        width: 60px;
+        height: 60px;
+      }
+
+      .test-corner-ribbon span {
+        width: 90px;
+        font-size: 0.50rem;
+        letter-spacing: 0.12em;
+        right: -24px;
+        top: 12px;
+      }
+
       .brand-title {
         flex-direction: column;
         gap: 1px;
@@ -478,6 +557,13 @@ export class HeaderComponent {
   wsService = inject(WebSocketService);
   transService = inject(TranslationService);
   pushService = inject(PushNotificationService);
+
+  readonly isTest = computed(() => {
+    if (typeof window !== 'undefined' && window.location.hostname === 'sismos.foznasolutions.com') {
+      return false;
+    }
+    return !environment.production || environment.isTest;
+  });
 
   @Output() toggleFilterDrawer = new EventEmitter<void>();
   @Output() openAnalytics = new EventEmitter<void>();

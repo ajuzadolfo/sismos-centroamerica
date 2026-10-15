@@ -266,6 +266,8 @@ jobs:
           if [ "${{ github.ref_name }}" = "main" ]; then
             BACKEND_URL="https://api-sismos.foznasolutions.com"
             WS_URL="wss://api-sismos.foznasolutions.com"
+            sed -i -E "s|production: false|production: true|g" frontend/src/environments/environment.ts
+            sed -i -E "s|isTest: true|isTest: false|g" frontend/src/environments/environment.ts
           fi
           
           echo "Configurando Frontend para conectar a: $BACKEND_URL"
