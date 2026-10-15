@@ -15,7 +15,11 @@ import { environment } from '../../../environments/environment';
     <header class="header glass-panel" [class.is-test-header]="isTest()">
       @if (isTest()) {
         <div class="test-header-watermark" aria-hidden="true">
-          {{ transService.currentLang() === 'es' ? 'NO PRODUCCIÓN · ENTORNO DE PRUEBAS' : 'NOT PRODUCTION · TEST ENVIRONMENT' }}
+          <span class="watermark-text">{{ transService.currentLang() === 'es' ? 'TEST · NO PRODUCCIÓN' : 'TEST · NOT PRODUCTION' }}</span>
+          <span class="watermark-separator">✦</span>
+          <span class="watermark-text">{{ transService.currentLang() === 'es' ? 'TEST · NO PRODUCCIÓN' : 'TEST · NOT PRODUCTION' }}</span>
+          <span class="watermark-separator">✦</span>
+          <span class="watermark-text">{{ transService.currentLang() === 'es' ? 'TEST · NO PRODUCCIÓN' : 'TEST · NOT PRODUCTION' }}</span>
         </div>
       }
       <a routerLink="/" class="logo-group" [title]="transService.tr().header.home">
@@ -28,13 +32,6 @@ import { environment } from '../../../environments/environment';
               <span class="brand-main">{{ transService.currentLang() === 'es' ? 'SISMOS' : 'EARTHQUAKES' }}</span>
               <span class="brand-sub">{{ transService.currentLang() === 'es' ? 'CENTROAMÉRICA' : 'CENTRAL AMERICA' }}</span>
             </h1>
-            @if (isTest()) {
-              <span class="test-badge" [title]="transService.currentLang() === 'es' ? 'Ambiente de pruebas activo — No es el entorno de producción' : 'Testing environment active — Not in production'">
-                <span class="test-badge-dot"></span>
-                <span class="desktop-label">{{ transService.currentLang() === 'es' ? 'TEST · NO PRODUCCIÓN' : 'TEST · NOT PRODUCTION' }}</span>
-                <span class="mobile-label">{{ transService.currentLang() === 'es' ? 'NO PROD' : 'NOT PROD' }}</span>
-              </span>
-            }
           </div>
           <span class="subtitle">{{ transService.tr().header.subtitle }}</span>
         </div>
@@ -140,6 +137,51 @@ import { environment } from '../../../environments/environment';
       z-index: 100;
       box-sizing: border-box;
       max-width: calc(100vw - 32px);
+      overflow: hidden;
+    }
+
+    .logo-group,
+    .metrics-group,
+    .actions-group {
+      position: relative;
+      z-index: 2;
+    }
+
+    .test-header-watermark {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 36px;
+      pointer-events: none;
+      user-select: none;
+      overflow: hidden;
+      z-index: 1;
+      transform: rotate(-2.5deg);
+      white-space: nowrap;
+    }
+
+    .watermark-text {
+      font-size: 1.85rem;
+      font-weight: 900;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(255, 183, 3, 0.12);
+      -webkit-text-stroke: 1.2px rgba(255, 183, 3, 0.35);
+      text-shadow: 0 0 16px rgba(255, 183, 3, 0.15);
+      flex-shrink: 0;
+    }
+
+    .watermark-separator {
+      font-size: 1.1rem;
+      color: rgba(255, 183, 3, 0.30);
+      flex-shrink: 0;
+    }
+
+    .header.is-test-header {
+      border-top: 2px solid rgba(255, 183, 3, 0.7);
+      box-shadow: inset 0 1px 6px rgba(255, 183, 3, 0.15), 0 8px 32px rgba(0, 0, 0, 0.35);
     }
 
     .logo-group {
@@ -187,77 +229,6 @@ import { environment } from '../../../environments/environment';
       display: flex;
       align-items: center;
       gap: 8px;
-    }
-
-    .test-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 2px 8px;
-      font-size: 0.60rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #ffb703;
-      background: rgba(255, 183, 3, 0.16);
-      border: 1px solid rgba(255, 183, 3, 0.55);
-      border-radius: 4px;
-      line-height: 1.25;
-      box-shadow: 0 0 10px rgba(255, 183, 3, 0.25);
-      user-select: none;
-      flex-shrink: 0;
-      white-space: nowrap;
-      animation: pulseTestGlow 3s ease-in-out infinite alternate;
-    }
-
-    .test-badge-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #ffb703;
-      box-shadow: 0 0 6px #ffb703;
-      flex-shrink: 0;
-      display: inline-block;
-    }
-
-    .desktop-label {
-      display: inline;
-    }
-
-    .mobile-label {
-      display: none;
-    }
-
-    .test-header-watermark {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 1.8rem;
-      font-weight: 900;
-      letter-spacing: 0.25em;
-      color: rgba(255, 183, 3, 0.04);
-      pointer-events: none;
-      user-select: none;
-      white-space: nowrap;
-      z-index: 0;
-      text-transform: uppercase;
-    }
-
-    .header.is-test-header {
-      border-top: 2px solid rgba(255, 183, 3, 0.7);
-      box-shadow: inset 0 1px 6px rgba(255, 183, 3, 0.15), 0 8px 32px rgba(0, 0, 0, 0.35);
-    }
-
-    @keyframes pulseTestGlow {
-      0% {
-        border-color: rgba(255, 183, 3, 0.35);
-        box-shadow: 0 0 4px rgba(255, 183, 3, 0.1);
-      }
-      100% {
-        border-color: rgba(255, 183, 3, 0.7);
-        box-shadow: 0 0 10px rgba(255, 183, 3, 0.3);
-      }
     }
 
     .brand-title {
@@ -514,27 +485,18 @@ import { environment } from '../../../environments/environment';
         gap: 5px;
       }
 
-      .test-badge {
-        font-size: 0.48rem;
-        padding: 1px 5px;
-        gap: 3px;
-      }
-
-      .test-badge-dot {
-        width: 4px;
-        height: 4px;
-      }
-
-      .desktop-label {
-        display: none;
-      }
-
-      .mobile-label {
-        display: inline;
-      }
-
       .test-header-watermark {
-        display: none;
+        gap: 16px;
+      }
+
+      .watermark-text {
+        font-size: 1.05rem;
+        letter-spacing: 0.12em;
+        -webkit-text-stroke: 0.9px rgba(255, 183, 3, 0.35);
+      }
+
+      .watermark-separator {
+        font-size: 0.8rem;
       }
 
       .brand-title {
