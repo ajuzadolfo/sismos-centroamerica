@@ -32,6 +32,9 @@ public class GeminiIntelligenceService {
     @Value("${gemini.api.key:#{null}}")
     private String geminiApiKey;
 
+    @Value("${gemini.api.model:gemini-3.8-flash}")
+    private String geminiModel;
+
     // Caché en memoria para evitar invocar el modelo varias veces para el mismo evento
     private final Map<String, SeismicIntelligenceReportDto> reportCache = new ConcurrentHashMap<>();
 
@@ -99,7 +102,9 @@ public class GeminiIntelligenceService {
 
     private SeismicIntelligenceReportDto callGeminiApi(SeismicEvent event) {
         String prompt = buildPrompt(event);
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
+        String cleanApiKey = geminiApiKey != null ? geminiApiKey.trim() : "";
+        String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-3.8-flash";
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + cleanApiKey;
 
         Map<String, Object> requestBody = Map.of(
                 "contents", List.of(
@@ -115,6 +120,7 @@ public class GeminiIntelligenceService {
         Map<String, Object> response = restClient.post()
                 .uri(url)
                 .header("Content-Type", "application/json")
+                .header("x-goog-api-key", cleanApiKey)
                 .body(requestBody)
                 .retrieve()
                 .body(Map.class);
@@ -161,10 +167,11 @@ public class GeminiIntelligenceService {
     }
 
     private SeismicIntelligenceReportDto parseAiResponse(SeismicEvent event, String text) {
+        String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-3.8-flash";
         return SeismicIntelligenceReportDto.builder()
                 .eventId(event.getId())
                 .title(event.getTitle())
-                .modelUsed("gemini-2.5-flash")
+                .modelUsed(modelName)
                 .executiveSummary(text)
                 .tectonicContext(determineTectonicContext(event))
                 .tsunamiRiskAssessment(determineTsunamiRisk(event))
@@ -189,14 +196,10 @@ public class GeminiIntelligenceService {
             summary = String.format("Movimiento telúrico menor a moderado (M %.1f) a %.1f km de profundidad. Típico de la constante dinámica geológica centroamericana, perceptible principalmente en pisos altos y en reposo.", mag, depth);
         }
 
-        String model = (geminiApiKey != null && !geminiApiKey.isBlank())
-                ? "gemini-2.5-flash-fallback"
-                : "geoscientific-rules-engine";
-
         return SeismicIntelligenceReportDto.builder()
                 .eventId(event.getId())
                 .title(event.getTitle())
-                .modelUsed(model)
+                .modelUsed("offline-fallback")
                 .executiveSummary(summary)
                 .tectonicContext(determineTectonicContext(event))
                 .tsunamiRiskAssessment(determineTsunamiRisk(event))

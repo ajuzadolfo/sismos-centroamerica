@@ -13,17 +13,31 @@ import { SeismicIntelligenceReport } from '../../models/earthquake.model';
       <div class="ai-modal glass-panel" (click)="$event.stopPropagation()">
         <!-- Header -->
         <div class="modal-header">
-          <div class="ai-badge">
-            <span class="sparkle-icon">✨</span>
-            <span class="badge-title">VERTEX AI // GEMINI 2.5 FLASH</span>
-          </div>
+          @if (!loading() && report(); as rep) {
+            @if (isLiveModel(rep.modelUsed)) {
+              <div class="ai-badge live" title="Análisis en vivo generado por Gemini 3.8 Flash">
+                <span class="pulse-dot"></span>
+                <span class="badge-title">GEMINI 3.8 FLASH // EN VIVO</span>
+              </div>
+            } @else {
+              <div class="ai-badge fallback" title="Inferencia Gemini offline. Operando con Motor de Reglas Geocientíficas de Respaldo">
+                <span class="badge-icon">🛡️</span>
+                <span class="badge-title">MODO RESPALDO (OFFLINE)</span>
+              </div>
+            }
+          } @else {
+            <div class="ai-badge live">
+              <span class="sparkle-icon">✨</span>
+              <span class="badge-title">FOZNA AI // GEMINI 3.8 FLASH</span>
+            </div>
+          }
           <button class="close-btn" (click)="close.emit()">&times;</button>
         </div>
 
         @if (loading()) {
           <div class="loading-state">
             <div class="ai-scanner"></div>
-            <p class="loading-text">{{ transService.currentLang() === 'en' ? 'Generating geoscientific analysis with Gemini 2.5 Flash...' : 'Generando análisis geocientífico con Gemini 2.5 Flash...' }}</p>
+            <p class="loading-text">{{ transService.currentLang() === 'en' ? 'Generating geoscientific analysis with Gemini 3.8 Flash...' : 'Generando análisis geocientífico con Gemini 3.8 Flash...' }}</p>
           </div>
         }
         @if (error()) {
@@ -38,8 +52,22 @@ import { SeismicIntelligenceReport } from '../../models/earthquake.model';
             
             <div class="meta-tags">
               <span class="tag intensity">{{ rep.estimatedPeakIntensity }}</span>
-              <span class="tag model">{{ rep.modelUsed }}</span>
+              @if (isLiveModel(rep.modelUsed)) {
+                <span class="tag model live" title="Modelo en Vivo">⚡ {{ rep.modelUsed }}</span>
+              } @else {
+                <span class="tag model fallback" title="Respaldo Geocientífico Offline">🛡️ Modo Respaldo (Offline)</span>
+              }
             </div>
+
+            @if (!isLiveModel(rep.modelUsed)) {
+              <div class="offline-banner">
+                <span class="offline-icon">🛡️</span>
+                <div class="offline-text">
+                  <strong>{{ transService.currentLang() === 'en' ? 'Offline Geoscientific Fallback' : 'Modo Respaldo Geocientífico Offline' }}</strong>
+                  <span>{{ transService.currentLang() === 'en' ? 'Live Gemini 3.8 inference is unreachable or unconfigured. This briefing was generated deterministically by the regional tectonic engine.' : 'La inferencia con Gemini 3.8 no está disponible o no tiene clave configurada. Este informe fue generado por el motor de reglas tectónicas de respaldo.' }}</span>
+                </div>
+              </div>
+            }
 
             <!-- Resumen Ejecutivo -->
             <div class="section-box">
@@ -138,10 +166,41 @@ import { SeismicIntelligenceReport } from '../../models/earthquake.model';
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(139, 92, 246, 0.25));
-      border: 1px solid rgba(0, 240, 255, 0.4);
       border-radius: 30px;
       padding: 4px 14px;
+      transition: all 0.25s ease;
+    }
+
+    .ai-badge.live {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(139, 92, 246, 0.25));
+      border: 1px solid rgba(0, 240, 255, 0.4);
+    }
+
+    .ai-badge.fallback {
+      background: rgba(251, 191, 36, 0.12);
+      border: 1px solid rgba(251, 191, 36, 0.45);
+    }
+
+    .ai-badge.fallback .badge-title {
+      color: #fbbf24;
+    }
+
+    .badge-icon {
+      font-size: 0.95rem;
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #10b981;
+      animation: status-pulse 1.8s infinite ease-in-out;
+    }
+
+    @keyframes status-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
     }
 
     .sparkle-icon {
@@ -225,6 +284,48 @@ import { SeismicIntelligenceReport } from '../../models/earthquake.model';
       background: rgba(139, 92, 246, 0.15);
       border: 1px solid rgba(139, 92, 246, 0.35);
       color: #a78bfa;
+    }
+
+    .tag.model.live {
+      background: rgba(0, 240, 255, 0.12);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      color: #00f0ff;
+    }
+
+    .tag.model.fallback {
+      background: rgba(251, 191, 36, 0.12);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      color: #fbbf24;
+    }
+
+    .offline-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: rgba(251, 191, 36, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 0.74rem;
+      color: #fde68a;
+    }
+
+    .offline-icon {
+      font-size: 1.1rem;
+      line-height: 1;
+      margin-top: 1px;
+    }
+
+    .offline-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .offline-text strong {
+      color: #fbbf24;
+      font-size: 0.78rem;
     }
 
     .section-box {
@@ -342,5 +443,11 @@ export class AiBriefingModalComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  isLiveModel(modelUsed?: string): boolean {
+    if (!modelUsed) return false;
+    const lower = modelUsed.toLowerCase();
+    return !lower.includes('fallback') && !lower.includes('rules-engine') && lower !== 'offline';
   }
 }

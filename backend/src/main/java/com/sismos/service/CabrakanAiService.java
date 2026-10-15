@@ -30,12 +30,15 @@ public class CabrakanAiService {
     @Value("${gemini.api.key:#{null}}")
     private String geminiApiKey;
 
+    @Value("${gemini.api.model:gemini-3.8-flash}")
+    private String geminiModel;
+
     public CabrakanChatResponse chat(CabrakanChatRequest request) {
         String userMessage = request.getMessage() != null ? request.getMessage().trim() : "";
         if (userMessage.isEmpty()) {
             return CabrakanChatResponse.builder()
                     .reply("Hola, soy **Cabrakán AI**, tu asistente geocientífico para Centroamérica. ¿En qué puedo orientarte hoy sobre la actividad sísmica y tectónica de la región?")
-                    .modelUsed("gemini-2.5-flash")
+                    .modelUsed((geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-3.8-flash")
                     .timestamp(Instant.now().toString())
                     .suggestedQuestions(List.of(
                             "¿Cuáles son los sismos más fuertes registrados?",
@@ -136,8 +139,9 @@ public class CabrakanAiService {
                     mag, place, depth, time);
         }
 
-        String cleanApiKey = geminiApiKey.trim();
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + cleanApiKey;
+        String cleanApiKey = geminiApiKey != null ? geminiApiKey.trim() : "";
+        String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-3.8-flash";
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + cleanApiKey;
 
         Map<String, Object> body = Map.of(
                 "systemInstruction", Map.of("parts", List.of(Map.of("text", systemInstruction))),
@@ -170,7 +174,7 @@ public class CabrakanAiService {
 
         return CabrakanChatResponse.builder()
                 .reply(replyText)
-                .modelUsed("gemini-2.5-flash")
+                .modelUsed(modelName)
                 .timestamp(Instant.now().toString())
                 .mapAction(mapAction)
                 .suggestedQuestions(generateSuggestions(request.getMessage()))

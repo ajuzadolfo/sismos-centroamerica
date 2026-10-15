@@ -45,7 +45,7 @@ export interface ChatMessage {
       [title]="transService.currentLang() === 'en' ? 'Open Cabrakán AI Geoscientific Assistant' : 'Abrir Asistente Geocientífico Cabrakán AI'">
       <span class="launcher-icon">🌋</span>
       <span class="launcher-label">Cabrakán AI</span>
-      <span class="model-badge">2.5</span>
+      <span class="model-badge">3.8</span>
       @if (hasUnread()) {
         <span class="unread-dot"></span>
       }
@@ -61,10 +61,10 @@ export interface ChatMessage {
             <div>
               <div class="header-title-row">
                 <span class="assistant-name">Cabrakán AI</span>
-                @if (activeModel() === 'gemini-2.5-flash') {
-                  <span class="assistant-chip live" title="Conectado en vivo con Gemini 2.5 Flash">
+                @if (activeModel() !== 'offline-fallback' && !activeModel().includes('fallback')) {
+                  <span class="assistant-chip live" title="Conectado en vivo con Gemini 3.8 Flash">
                     <span class="status-pulse-dot"></span>
-                    Gemini 2.5 Flash (En Vivo)
+                    Gemini 3.8 Flash (En Vivo)
                   </span>
                 } @else {
                   <span class="assistant-chip fallback" title="Operando en Modo Respaldo Geocientífico Offline">
@@ -100,8 +100,8 @@ export interface ChatMessage {
 
                 <div class="msg-meta-row">
                   @if (msg.role === 'assistant' && msg.modelUsed) {
-                    <span class="msg-model-tag" [class.live]="msg.modelUsed === 'gemini-2.5-flash'" [class.fallback]="msg.modelUsed !== 'gemini-2.5-flash'">
-                      {{ msg.modelUsed === 'gemini-2.5-flash' ? '⚡ Gemini 2.5 Flash' : '🛡️ Respaldo Geocientífico' }}
+                    <span class="msg-model-tag" [class.live]="msg.modelUsed !== 'offline-fallback' && !msg.modelUsed.includes('fallback')" [class.fallback]="msg.modelUsed === 'offline-fallback' || msg.modelUsed.includes('fallback')">
+                      {{ msg.modelUsed !== 'offline-fallback' && !msg.modelUsed.includes('fallback') ? '⚡ ' + (msg.modelUsed.includes('gemini') ? 'Gemini 3.8 Flash' : msg.modelUsed) : '🛡️ Respaldo Geocientífico' }}
                     </span>
                   }
                   <span class="msg-time">{{ msg.timestamp }}</span>
@@ -579,7 +579,7 @@ export class CabrakanChatComponent {
 
   @ViewChild('messageContainer') messageContainer?: ElementRef<HTMLDivElement>;
 
-  activeModel = signal<string>('gemini-2.5-flash');
+  activeModel = signal<string>('gemini-3.8-flash');
   isOpen = signal<boolean>(false);
   hasUnread = signal<boolean>(false);
   isGenerating = signal<boolean>(false);

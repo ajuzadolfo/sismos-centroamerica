@@ -142,10 +142,10 @@ import { environment } from '../../../environments/environment';
             </div>
           }
 
-          <!-- Botón de Análisis Fozna AI (Gemini 2.5 Flash) -->
+          <!-- Botón de Análisis Fozna AI (Gemini 3.8 Flash) -->
           <button class="btn-ai-analysis" (click)="isAiModalOpen.set(true)">
             <span class="sparkle">✨</span>
-            <span>{{ transService.currentLang() === 'en' ? 'Fozna AI Seismic Briefing (Gemini 2.5)' : 'Informe Sísmico Fozna AI (Gemini 2.5)' }}</span>
+            <span>{{ transService.currentLang() === 'en' ? 'Fozna AI Seismic Briefing (Gemini 3.8)' : 'Informe Sísmico Fozna AI (Gemini 3.8)' }}</span>
           </button>
 
           <!-- Acciones de Compartición Social y Captura de ShakeMap -->
