@@ -14,12 +14,8 @@ import { environment } from '../../../environments/environment';
   template: `
     <header class="header glass-panel" [class.is-test-header]="isTest()">
       @if (isTest()) {
-        <div class="test-header-watermark" aria-hidden="true">
-          <span class="watermark-text">{{ transService.currentLang() === 'es' ? 'TEST · NO PRODUCCIÓN' : 'TEST · NOT PRODUCTION' }}</span>
-          <span class="watermark-separator">✦</span>
-          <span class="watermark-text">{{ transService.currentLang() === 'es' ? 'TEST · NO PRODUCCIÓN' : 'TEST · NOT PRODUCTION' }}</span>
-          <span class="watermark-separator">✦</span>
-          <span class="watermark-text">{{ transService.currentLang() === 'es' ? 'TEST · NO PRODUCCIÓN' : 'TEST · NOT PRODUCTION' }}</span>
+        <div class="test-corner-ribbon" aria-hidden="true" [title]="transService.currentLang() === 'es' ? 'Entorno de Pruebas · No Producción' : 'Test Environment · Not Production'">
+          <span>TESTING</span>
         </div>
       }
       <a routerLink="/" class="logo-group" [title]="transService.tr().header.home">
@@ -147,41 +143,40 @@ import { environment } from '../../../environments/environment';
       z-index: 2;
     }
 
-    .test-header-watermark {
+    .header.is-test-header {
+      padding-right: 48px;
+      border-top: 2px solid rgba(245, 158, 11, 0.7);
+    }
+
+    .test-corner-ribbon {
       position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 36px;
+      top: 0;
+      right: 0;
+      width: 75px;
+      height: 75px;
+      overflow: hidden;
       pointer-events: none;
       user-select: none;
-      overflow: hidden;
-      z-index: 1;
-      transform: rotate(-2.5deg);
-      white-space: nowrap;
+      z-index: 10;
     }
 
-    .watermark-text {
-      font-size: 1.85rem;
+    .test-corner-ribbon span {
+      position: absolute;
+      display: block;
+      width: 110px;
+      padding: 3px 0;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      color: #0f172a;
+      font-size: 0.60rem;
       font-weight: 900;
-      letter-spacing: 0.22em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: rgba(255, 183, 3, 0.12);
-      -webkit-text-stroke: 1.2px rgba(255, 183, 3, 0.35);
-      text-shadow: 0 0 16px rgba(255, 183, 3, 0.15);
-      flex-shrink: 0;
-    }
-
-    .watermark-separator {
-      font-size: 1.1rem;
-      color: rgba(255, 183, 3, 0.30);
-      flex-shrink: 0;
-    }
-
-    .header.is-test-header {
-      border-top: 2px solid rgba(255, 183, 3, 0.7);
-      box-shadow: inset 0 1px 6px rgba(255, 183, 3, 0.15), 0 8px 32px rgba(0, 0, 0, 0.35);
+      text-align: center;
+      right: -26px;
+      top: 16px;
+      transform: rotate(45deg);
+      user-select: none;
     }
 
     .logo-group {
@@ -485,18 +480,21 @@ import { environment } from '../../../environments/environment';
         gap: 5px;
       }
 
-      .test-header-watermark {
-        gap: 16px;
+      .header.is-test-header {
+        padding-right: 36px;
       }
 
-      .watermark-text {
-        font-size: 1.05rem;
+      .test-corner-ribbon {
+        width: 60px;
+        height: 60px;
+      }
+
+      .test-corner-ribbon span {
+        width: 90px;
+        font-size: 0.50rem;
         letter-spacing: 0.12em;
-        -webkit-text-stroke: 0.9px rgba(255, 183, 3, 0.35);
-      }
-
-      .watermark-separator {
-        font-size: 0.8rem;
+        right: -24px;
+        top: 12px;
       }
 
       .brand-title {
