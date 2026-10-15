@@ -14,7 +14,9 @@ import { environment } from '../../../environments/environment';
   template: `
     <header class="header glass-panel" [class.is-test-header]="isTest()">
       @if (isTest()) {
-        <div class="test-header-watermark" aria-hidden="true">TEST</div>
+        <div class="test-header-watermark" aria-hidden="true">
+          {{ transService.currentLang() === 'es' ? 'NO PRODUCCIÓN · ENTORNO DE PRUEBAS' : 'NOT PRODUCTION · TEST ENVIRONMENT' }}
+        </div>
       }
       <a routerLink="/" class="logo-group" [title]="transService.tr().header.home">
         <div class="pulse-indicator" [class.connected]="wsService.isConnected()">
@@ -27,7 +29,11 @@ import { environment } from '../../../environments/environment';
               <span class="brand-sub">{{ transService.currentLang() === 'es' ? 'CENTROAMÉRICA' : 'CENTRAL AMERICA' }}</span>
             </h1>
             @if (isTest()) {
-              <span class="test-badge" [title]="transService.currentLang() === 'es' ? 'Entorno de Pruebas (Test)' : 'Test Environment'">TEST</span>
+              <span class="test-badge" [title]="transService.currentLang() === 'es' ? 'Ambiente de pruebas activo — No es el entorno de producción' : 'Testing environment active — Not in production'">
+                <span class="test-badge-dot"></span>
+                <span class="desktop-label">{{ transService.currentLang() === 'es' ? 'TEST · NO PRODUCCIÓN' : 'TEST · NOT PRODUCTION' }}</span>
+                <span class="mobile-label">{{ transService.currentLang() === 'es' ? 'NO PROD' : 'NOT PROD' }}</span>
+              </span>
             }
           </div>
           <span class="subtitle">{{ transService.tr().header.subtitle }}</span>
@@ -186,21 +192,40 @@ import { environment } from '../../../environments/environment';
     .test-badge {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      padding: 1px 6px;
+      gap: 5px;
+      padding: 2px 8px;
       font-size: 0.60rem;
       font-weight: 800;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
       color: #ffb703;
-      background: rgba(255, 183, 3, 0.14);
-      border: 1px solid rgba(255, 183, 3, 0.45);
+      background: rgba(255, 183, 3, 0.16);
+      border: 1px solid rgba(255, 183, 3, 0.55);
       border-radius: 4px;
       line-height: 1.25;
-      box-shadow: 0 0 8px rgba(255, 183, 3, 0.2);
+      box-shadow: 0 0 10px rgba(255, 183, 3, 0.25);
       user-select: none;
       flex-shrink: 0;
+      white-space: nowrap;
       animation: pulseTestGlow 3s ease-in-out infinite alternate;
+    }
+
+    .test-badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ffb703;
+      box-shadow: 0 0 6px #ffb703;
+      flex-shrink: 0;
+      display: inline-block;
+    }
+
+    .desktop-label {
+      display: inline;
+    }
+
+    .mobile-label {
+      display: none;
     }
 
     .test-header-watermark {
@@ -208,9 +233,9 @@ import { environment } from '../../../environments/environment';
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      font-size: 2.8rem;
+      font-size: 1.8rem;
       font-weight: 900;
-      letter-spacing: 0.35em;
+      letter-spacing: 0.25em;
       color: rgba(255, 183, 3, 0.04);
       pointer-events: none;
       user-select: none;
@@ -490,9 +515,22 @@ import { environment } from '../../../environments/environment';
       }
 
       .test-badge {
-        font-size: 0.50rem;
-        padding: 0 4px;
-        letter-spacing: 0.08em;
+        font-size: 0.48rem;
+        padding: 1px 5px;
+        gap: 3px;
+      }
+
+      .test-badge-dot {
+        width: 4px;
+        height: 4px;
+      }
+
+      .desktop-label {
+        display: none;
+      }
+
+      .mobile-label {
+        display: inline;
       }
 
       .test-header-watermark {
