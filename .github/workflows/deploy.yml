@@ -325,3 +325,75 @@ jobs:
           echo "- **Backend API REST / WebSockets:** $BACKEND_URL" >> $GITHUB_STEP_SUMMARY
           echo "- **Base de Datos:** Cloud SQL PostgreSQL 16 con PostGIS (Direct VPC Egress)" >> $GITHUB_STEP_SUMMARY
           echo "- **Seguridad:** Autenticación OIDC vía WIF (Cero Claves JSON)" >> $GITHUB_STEP_SUMMARY
+
+      # 9. Notificación por Correo tras Despliegue en TEST
+      - name: Notificar Despliegue en TEST por Correo
+        if: success() && github.ref_name == 'develop'
+        uses: dawidd6/action-send-mail@v3
+        continue-on-error: true
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "🚀 [Sismos CA] Despliegue en TEST Completado"
+          to: ${{ secrets.GMAIL_TO || secrets.GMAIL_USERNAME }}
+          from: "Sismos Centroamérica CI/CD <${{ secrets.GMAIL_USERNAME }}>"
+          body: |
+            🌋 Sismos Centroamérica - Despliegue en TEST Completado
+            
+            El despliegue automático en el entorno de TEST se ha completado con éxito en Google Cloud Run.
+            
+            URL de la Aplicación en Test:
+            ${{ steps.frontend_deploy.outputs.url }}
+            
+            Detalles del Despliegue:
+            - Rama: develop
+            - Commit: ${{ github.sha }}
+            - Mensaje: ${{ github.event.head_commit.message }}
+            - Backend API: ${{ steps.backend_url.outputs.url }}
+          html_body: |
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0b0f19; color: #f8fafc; padding: 24px; margin: 0; }
+                .card { background: #111827; border: 1px solid #1e293b; border-radius: 12px; padding: 24px; max-width: 600px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+                .header { border-bottom: 1px solid #1e293b; padding-bottom: 16px; margin-bottom: 20px; }
+                .title { font-size: 20px; font-weight: 700; color: #38bdf8; margin: 0; }
+                .badge { display: inline-block; background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; margin-top: 8px; }
+                .url-box { background: rgba(0, 240, 255, 0.08); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 8px; padding: 16px; margin: 18px 0; text-align: center; }
+                .btn { display: inline-block; background: #00f0ff; color: #040914 !important; font-weight: 700; text-decoration: none; padding: 10px 22px; border-radius: 8px; margin-top: 10px; font-size: 14px; }
+                .meta-table { width: 100%; font-size: 13px; color: #94a3b8; border-collapse: collapse; margin-top: 16px; }
+                .meta-table td { padding: 6px 0; }
+                .meta-table td.label { width: 120px; color: #64748b; font-weight: 600; }
+                .footer { font-size: 11px; color: #475569; text-align: center; margin-top: 24px; border-top: 1px solid #1e293b; padding-top: 12px; }
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <div class="header">
+                  <h1 class="title">🌋 Sismos Centroamérica</h1>
+                  <span class="badge">TEST ENVIRONMENT (sismos-centroamerica-test)</span>
+                </div>
+                <p>El despliegue automático en el entorno de <strong>TEST</strong> se ha completado con éxito en Google Cloud Run.</p>
+                <div class="url-box">
+                  <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px;">URL de la Aplicación en Test:</div>
+                  <a href="${{ steps.frontend_deploy.outputs.url }}" style="font-size: 15px; font-weight: 700; color: #38bdf8; word-break: break-all;">${{ steps.frontend_deploy.outputs.url }}</a>
+                  <br>
+                  <a href="${{ steps.frontend_deploy.outputs.url }}" class="btn">Abrir Consola de Pruebas →</a>
+                </div>
+                <table class="meta-table">
+                  <tr><td class="label">Rama:</td><td><code>develop</code></td></tr>
+                  <tr><td class="label">Commit SHA:</td><td><code>${{ github.sha }}</code></td></tr>
+                  <tr><td class="label">Mensaje:</td><td>${{ github.event.head_commit.message }}</td></tr>
+                  <tr><td class="label">Backend API:</td><td><a href="${{ steps.backend_url.outputs.url }}" style="color: #94a3b8;">${{ steps.backend_url.outputs.url }}</a></td></tr>
+                </table>
+                <div class="footer">
+                  Plataforma de Monitorización Sísmica · Fozna Solutions · Cloud Run us-central1
+                </div>
+              </div>
+            </body>
+            </html>
