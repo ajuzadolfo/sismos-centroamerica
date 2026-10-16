@@ -101,4 +101,17 @@ class CabrakanAiServiceSecurityTest {
 
         assertThat(request.getMessage().length()).isLessThanOrEqualTo(500);
     }
+
+    @Test
+    @DisplayName("Debe sugerir preguntas específicas de Panamá cuando se consulta sobre Panamá")
+    void shouldSuggestPanamaQuestionsWhenPanamaIsMentioned() {
+        CabrakanChatRequest request = CabrakanChatRequest.builder()
+                .message("¿Qué sismos han ocurrido recientemente en Panamá?")
+                .build();
+
+        CabrakanChatResponse response = cabrakanAiService.chat(request);
+
+        assertThat(response.getSuggestedQuestions()).isNotEmpty();
+        assertThat(response.getSuggestedQuestions().get(0)).contains("Panamá");
+    }
 }
