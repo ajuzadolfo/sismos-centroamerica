@@ -129,7 +129,7 @@ public class CabrakanAiService {
                         Estoy siendo activamente desarrollado por Fozna Solutions como proyecto piloto.
                         Pregúntame sobre cualquier evento sísmico.
                         """.stripIndent().trim())
-                    .modelUsed((geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-3.8-flash")
+                    .modelUsed((geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-flash-latest")
                     .timestamp(Instant.now().toString())
                     .suggestedQuestions(List.of(
                             "¿Cuáles son los sismos más fuertes registrados?",
