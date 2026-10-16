@@ -73,12 +73,16 @@ export class EarthquakeService {
         next: (data) => {
           this.earthquakes.set(data.features || []);
           this.loading.set(false);
-          // En pantallas grandes (desktop), preseleccionar el sismo mayor. En móviles, dejar el mapa limpio
+          // En pantallas grandes (desktop), preseleccionar el sismo más reciente en tiempo real
           const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
           if (!isMobile && !this.selectedEarthquake() && data.features && data.features.length > 0) {
-            const major = data.features.reduce((max, cur) => cur.properties.magnitude > max.properties.magnitude ? cur : max);
-            if (major) {
-              this.selectEarthquake(major.id);
+            const latest = data.features.reduce((newest, cur) => {
+              const curTime = new Date(cur.properties.time).getTime();
+              const newestTime = new Date(newest.properties.time).getTime();
+              return curTime > newestTime ? cur : newest;
+            }, data.features[0]);
+            if (latest) {
+              this.selectEarthquake(latest.id);
             }
           }
         },
