@@ -167,7 +167,7 @@ public class GeminiIntelligenceService {
     }
 
     private SeismicIntelligenceReportDto parseAiResponse(SeismicEvent event, String text) {
-        String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-3.8-flash";
+        String modelName = (geminiModel != null && !geminiModel.isBlank()) ? geminiModel.trim() : "gemini-flash-latest";
         return SeismicIntelligenceReportDto.builder()
                 .eventId(event.getId())
                 .title(event.getTitle())

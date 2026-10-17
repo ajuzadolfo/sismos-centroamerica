@@ -54,6 +54,7 @@ export interface ChatMessage {
     <!-- Ventana de Chat Flotante Glassmorphic -->
     @if (isOpen()) {
       <div class="chat-window glass-panel">
+        <div class="mobile-sheet-handle"></div>
         <!-- Header del Asistente -->
         <div class="chat-header">
           <div class="header-info">
@@ -62,13 +63,13 @@ export interface ChatMessage {
               <div class="header-title-row">
                 <span class="assistant-name">Cabrakán AI</span>
                 @if (activeModel() !== 'offline-fallback' && !activeModel().includes('fallback')) {
-                  <span class="assistant-chip live" title="Conectado en vivo con Gemini 3.8 Flash">
+                  <span class="assistant-chip live" [title]="transService.currentLang() === 'en' ? 'Online' : 'En Línea'">
                     <span class="status-pulse-dot"></span>
-                    Gemini 3.8 Flash (En Vivo)
+                    {{ transService.currentLang() === 'en' ? 'Online' : 'En Línea' }}
                   </span>
                 } @else {
-                  <span class="assistant-chip fallback" title="Operando en Modo Respaldo Geocientífico Offline">
-                    🛡️ Modo Respaldo (Offline)
+                  <span class="assistant-chip fallback" [title]="transService.currentLang() === 'en' ? 'Offline Backup Mode' : 'Modo Respaldo Offline'">
+                    🛡️ {{ transService.currentLang() === 'en' ? 'Offline' : 'Respaldo' }}
                   </span>
                 }
               </div>
@@ -101,7 +102,7 @@ export interface ChatMessage {
                 <div class="msg-meta-row">
                   @if (msg.role === 'assistant' && msg.modelUsed) {
                     <span class="msg-model-tag" [class.live]="msg.modelUsed !== 'offline-fallback' && !msg.modelUsed.includes('fallback')" [class.fallback]="msg.modelUsed === 'offline-fallback' || msg.modelUsed.includes('fallback')">
-                      {{ msg.modelUsed !== 'offline-fallback' && !msg.modelUsed.includes('fallback') ? '⚡ ' + (msg.modelUsed.includes('gemini') ? 'Gemini 3.8 Flash' : msg.modelUsed) : '🛡️ Respaldo Geocientífico' }}
+                      {{ msg.modelUsed !== 'offline-fallback' && !msg.modelUsed.includes('fallback') ? '⚡ Cabrakán AI' : '🛡️ Respaldo Geocientífico' }}
                     </span>
                   }
                   <span class="msg-time">{{ msg.timestamp }}</span>
@@ -244,6 +245,10 @@ export interface ChatMessage {
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
+    .mobile-sheet-handle {
+      display: none;
+    }
+
     .chat-header {
       padding: 12px 16px;
       display: flex;
@@ -251,6 +256,7 @@ export interface ChatMessage {
       justify-content: space-between;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       background: rgba(255, 255, 255, 0.02);
+      flex-shrink: 0;
     }
 
     .header-info {
@@ -475,6 +481,9 @@ export interface ChatMessage {
       gap: 6px;
       padding: 6px 14px 10px 14px;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
+      flex-shrink: 0;
+      max-height: 96px;
+      overflow-y: auto;
     }
 
     .sug-pill {
@@ -503,9 +512,10 @@ export interface ChatMessage {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 14px;
+      padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) 14px;
       background: rgba(4, 9, 20, 0.95);
       border-top: 1px solid rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
     }
 
     .chat-input {
@@ -539,6 +549,7 @@ export interface ChatMessage {
       font-size: 0.85rem;
       cursor: pointer;
       transition: all 0.2s ease;
+      flex-shrink: 0;
     }
 
     .send-btn:hover:not(:disabled) {
@@ -552,21 +563,69 @@ export interface ChatMessage {
       cursor: not-allowed;
     }
 
-    @media (max-width: 480px) {
+    @media (max-width: 768px) {
       .chat-window {
+        position: fixed;
         bottom: 0;
         right: 0;
         left: 0;
-        width: 100%;
-        max-width: 100%;
-        height: 80vh;
-        height: 80dvh;
-        border-radius: 18px 18px 0 0;
+        width: 100vw;
+        max-width: 100vw;
+        height: 85dvh;
+        height: 85vh;
+        max-height: calc(100dvh - 35px);
+        border-radius: 22px 22px 0 0;
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+        z-index: 1000;
+        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.95), 0 0 24px rgba(0, 240, 255, 0.2);
       }
+
+      .mobile-sheet-handle {
+        display: block;
+        width: 42px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 4px;
+        margin: 10px auto 2px auto;
+        flex-shrink: 0;
+      }
+
+      .chat-header {
+        padding: 8px 14px 10px 14px;
+      }
+
+      .header-close-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+      }
+
+      .chat-input-bar {
+        padding: 10px 14px calc(14px + env(safe-area-inset-bottom, 16px)) 14px;
+        background: rgba(4, 9, 20, 0.98);
+        border-top: 1px solid rgba(0, 240, 255, 0.15);
+      }
+
+      .chat-input {
+        font-size: 16px; /* Evita zoom automático en Safari iOS al enfocar */
+        padding: 10px 14px;
+      }
+
+      .send-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+      }
+
       .cabrakan-launcher {
-        bottom: 50px;
+        bottom: calc(56px + env(safe-area-inset-bottom, 12px));
         right: 12px;
-        padding: 6px 12px;
+        padding: 6px 14px;
         font-size: 0.74rem;
       }
     }
@@ -579,7 +638,7 @@ export class CabrakanChatComponent {
 
   @ViewChild('messageContainer') messageContainer?: ElementRef<HTMLDivElement>;
 
-  activeModel = signal<string>('gemini-3.8-flash');
+  activeModel = signal<string>('cabrakan-ai');
   isOpen = signal<boolean>(false);
   hasUnread = signal<boolean>(false);
   isGenerating = signal<boolean>(false);

@@ -18,6 +18,31 @@ public interface SeismicEventRepository extends JpaRepository<SeismicEvent, Stri
 
     List<SeismicEvent> findTop50ByOrderByTimeDesc();
 
+    // Consultas para RAG Inteligente en Cabrakán AI
+    @Query(value = """
+        SELECT * FROM seismic_events
+        WHERE (LOWER(place) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND time >= :since
+        ORDER BY magnitude DESC, time DESC
+        LIMIT 10
+        """, nativeQuery = true)
+    List<SeismicEvent> findRecentByPlaceKeyword(
+            @Param("keyword") String keyword,
+            @Param("since") Instant since
+    );
+
+    @Query(value = """
+        SELECT * FROM seismic_events
+        WHERE time >= :since AND magnitude >= :minMagnitude
+        ORDER BY magnitude DESC, time DESC
+        LIMIT 10
+        """, nativeQuery = true)
+    List<SeismicEvent> findTopSignificantEvents(
+            @Param("since") Instant since,
+            @Param("minMagnitude") BigDecimal minMagnitude
+    );
+
     // Consulta espacial por Bounding Box (delimitación del mapa en pantalla)
     @Query(value = """
         SELECT * FROM seismic_events
